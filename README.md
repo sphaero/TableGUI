@@ -39,3 +39,7 @@ Note
 
 TableGUI is still under early stage of development. The lsit of featured widgets is not completed, but these are the planned widgets to be made.
 
+Requirements
+============
+
+TableGUI requires OpenGL, GLFW and BasicUtils (from the same author).
