@@ -36,7 +36,6 @@ int main( int argc, char* args[])
   BWidgetClient->FAlignment.FRight.FEnabled = TRUE;
   BWidgetClient->FAlignment.FRight.FAttatchToSide = RIGHT;
   
-  
   BWidgetButton = GUI_Create_Widget(BWindow, "button", "FButton");
   Alloc_GUIButton(BWidgetButton);
   Widget_SetInt(BWidgetButton, "left", 60);

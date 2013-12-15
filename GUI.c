@@ -720,7 +720,55 @@ static void Window_Callback_MouseButton(GLFWwindow* AWindow, int AButton, int AA
 
 static void Window_Callback_MousePosition(GLFWwindow* AWindow, double AMouseX, double AMouseY)
 {
+  TGUIWidget *BWidgetMouseOver = NULL;
+  TGUIWidget *BClientWidget = NULL;
+  TIterator *BIteratorWidget = NULL;
+  TGUIWindow *BWindow = (TGUIWindow *)glfwGetWindowUserPointer(AWindow);
+  BWindow->FMouseX = AMouseX;
+  BWindow->FMouseY = AMouseY;
   
+  // Mouse input works only on the last client widget. This is the modal
+  // behaviour.
+  BIteratorWidget = BWindow->FListClientWidget->FLastChild;
+  if (BIteratorWidget)
+  {
+    BClientWidget = (TGUIWidget *)BIteratorWidget->FPointer;
+    if (BClientWidget)
+    {
+      BWidgetMouseOver = GetWidgetAt(BClientWidget, BWindow->FMouseX, BWindow->FMouseY);
+      if (BWidgetMouseOver != BWindow->FWidgetMouseOver)
+      {
+        if (BWindow->FWidgetMouseOver)
+        {
+          printf("[MESSAGE] Mouse leave \"%s\".\n", BWindow->FWidgetMouseOver->FName->FPointer);
+          
+          if (BWindow->FWidgetMouseOver->FMouseLeave)
+          {
+            BWindow->FWidgetMouseOver->FMouseLeave(BWindow->FWidgetMouseOver);
+          };
+        };
+        
+        if (BWidgetMouseOver)
+        {
+          printf("[MESSAGE] Mouse enter \"%s\".\n", BWidgetMouseOver->FName->FPointer);
+          
+          if (BWidgetMouseOver->FMouseEnter)
+          {
+            BWidgetMouseOver->FMouseEnter(BWidgetMouseOver);
+          };
+        };
+      };
+      
+      if (BWidgetMouseOver)
+      {
+        if (BWidgetMouseOver->FMouseMove)
+        {
+          BWidgetMouseOver->FMouseMove(BWidgetMouseOver, BWindow->FMouseX - GetWidgetGlobalLeft(BWindow->FWidgetMouseOver), BWindow->FMouseY - GetWidgetGlobalTop(BWindow->FWidgetMouseOver));
+        };
+      };
+      BWindow->FWidgetMouseOver = BWidgetMouseOver;
+    };
+  };  
 };
 
 static void Window_Callback_Key(GLFWwindow* AWindow, int key, int scancode, int action, int mods)
@@ -1018,6 +1066,7 @@ TGUIWindow *GUI_Create_Window(const char *ATitle, int APosX, int APosY, int AWid
   if (BWindow)
   {
     BWindow->FGLFW_Window = glfwCreateWindow(AWidth, AHeight, ATitle, NULL, NULL);
+    glfwSetWindowUserPointer(BWindow->FGLFW_Window, BWindow);
     glfwMakeContextCurrent(BWindow->FGLFW_Window);
     
     glfwSetCursorPosCallback(BWindow->FGLFW_Window, Window_Callback_MousePosition);
