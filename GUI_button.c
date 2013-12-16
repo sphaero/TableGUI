@@ -19,95 +19,66 @@
 
 void GUIButton_Draw(TGUIWidget *AWidget)
 {
-  /*SDL_Renderer *BRenderer = AWidget->FWindow->FSDL_Renderer;
-  SDL_Rect BRect;
-  SDL_Surface *BText = NULL;
-  SDL_Texture* BText_Texture = NULL;
-  SDL_Color BTextColor;
-  BTextColor.r = 0;
-  BTextColor.g = 0;
-  BTextColor.b = 0;
-  BTextColor.a = 255;
-  SDL_Color BBgColor;
-  BBgColor.r = 0;
-  BBgColor.g = 0;
-  BBgColor.b = 0;
-  BBgColor.a = 0;
   
   if (Widget_GetBool(AWidget, "enabled"))
   {
     // BEGIN - Draw the background and the borders.
-    SDL_SetRenderDrawColor(BRenderer, COLOR_CONTAINER_BACKGROUND_R, COLOR_CONTAINER_BACKGROUND_G, COLOR_CONTAINER_BACKGROUND_B, 255);
-    SDL_RenderClear(BRenderer);
+    int BWidth = Widget_GetInt(AWidget, "width");
+    int BHeight = Widget_GetInt(AWidget, "height");
     
-    BRect.x = 1;
-    BRect.y = 1;
-    BRect.w = Widget_GetInt(AWidget, "width") - 2;
-    BRect.h = Widget_GetInt(AWidget, "height") - 2;
     if (Widget_GetBool(AWidget, "down"))
     {
-      SDL_SetRenderDrawColor(BRenderer, COLOR_BACKGROUND_SHADOW_R, COLOR_BACKGROUND_SHADOW_G, COLOR_BACKGROUND_SHADOW_B, 255);
+      glColor4f(0.5, 0.5, 0.5, 1.0);
     } else
     {
-      if (AWidget->FWindow->FWidgetMouseOver == AWidget)
+      if (AWidget == AWidget->FWindow->FWidgetMouseOver)
       {
-        SDL_SetRenderDrawColor(BRenderer, COLOR_BACKGROUND_R * 1.1, COLOR_BACKGROUND_G * 1.1, COLOR_BACKGROUND_B * 1.1, 255);
+        glColor4f(0.7, 0.7, 0.7, 1.0);
       } else
       {
-        SDL_SetRenderDrawColor(BRenderer, COLOR_BACKGROUND_R, COLOR_BACKGROUND_G, COLOR_BACKGROUND_B, 255);
+        glColor4f(0.6, 0.6, 0.6, 1.0);
       };
     };
+    glBegin(GL_QUADS);
+    glVertex3f(0.0, 0.0, 0.0);
+    glVertex3f(0.0, BHeight, 0.0);
+    glVertex3f(BWidth, BHeight, 0.0);
+    glVertex3f(BWidth, 0.0, 0.0);
+    glEnd();
     
-    SDL_RenderFillRect(BRenderer, &BRect);
-    
-    SDL_SetRenderDrawColor(BRenderer, COLOR_BORDER_R, COLOR_BORDER_R, COLOR_BORDER_B, 255);
-    
-    BRect.x = 0;
-    BRect.y = 0;
-    BRect.w = Widget_GetInt(AWidget, "width");
-    BRect.h = Widget_GetInt(AWidget, "height");
-    
-    // Top
-    SDL_RenderDrawLine(BRenderer, 1, 0, BRect.w - 1 - 1, 0);
-    // Down
-    SDL_RenderDrawLine(BRenderer, 1, BRect.h - 1, BRect.w - 1 - 1, BRect.h - 1);
-    // Left
-    SDL_RenderDrawLine(BRenderer, 0, 1, 0, BRect.h - 1 - 1);
-    // Right
-    SDL_RenderDrawLine(BRenderer, BRect.w - 1, 1, BRect.w - 1, BRect.h - 1 - 1);
-    
-    if (AWidget->FWindow->FWidgetFocused == AWidget)
+    if (Widget_GetBool(AWidget, "down"))
     {
-      SDL_SetRenderDrawColor(BRenderer, COLOR_FOCUS_R, COLOR_FOCUS_G, COLOR_FOCUS_B, 255);
-      // Top
-      SDL_RenderDrawLine(BRenderer, 1, 1, BRect.w - 1 - 1, 1);
-      // Down
-      SDL_RenderDrawLine(BRenderer, 1, BRect.h - 1 - 1, BRect.w - 1 - 1, BRect.h - 1 - 1);
-      // Left
-      SDL_RenderDrawLine(BRenderer, 1, 1, 1, BRect.h - 1 - 1);
-      // Right
-      SDL_RenderDrawLine(BRenderer, BRect.w - 1 - 1, 1, BRect.w - 1 - 1, BRect.h - 1 - 1);
-    };
-    // END - Draw the background and the borders.
-    
-    if (AWidget->FWindow->FFont)
+      glColor4f(0.3, 0.3, 0.3, 1.0);
+    } else
     {
-      BText = TTF_RenderText_Solid(AWidget->FWindow->FFont, Widget_GetString(AWidget, "text"), BTextColor);
-      BText_Texture = SDL_CreateTextureFromSurface(BRenderer, BText);
-      SDL_FreeSurface(BText);
-      
-      SDL_QueryTexture(BText_Texture, NULL, NULL, &BRect.w, &BRect.h);
-      BRect.x = (int)((Widget_GetInt(AWidget, "width") / 2) - (BRect.w / 2));
-      BRect.y = (int)((Widget_GetInt(AWidget, "height") / 2) - (BRect.h / 2));
-      
-      SDL_RenderCopy(BRenderer, BText_Texture, NULL, &BRect);
-      SDL_DestroyTexture(BText_Texture);
+      if (AWidget == AWidget->FWindow->FWidgetMouseOver)
+      {
+        glColor4f(0.5, 0.5, 0.5, 1.0);
+      } else
+      {
+        glColor4f(0.4, 0.4, 0.4, 1.0);
+      };
     };
-    SDL_RenderPresent(BRenderer);
+    glBegin(GL_LINES);
+    glVertex3f(1.0, 1.0, 0.0);
+    glVertex3f(1.0, BHeight, 0.0);
+    glVertex3f(0.0, BHeight - 1, 0.0);
+    glVertex3f(BWidth, BHeight - 1, 0.0);
+    glVertex3f(BWidth, BHeight, 0.0);
+    glVertex3f(BWidth, 1.0, 0.0);
+    glVertex3f(BWidth, BHeight - 2, 0.0);
+    glVertex3f(1.0, BHeight - 2, 0.0);
+    glEnd();
+    
+      glColor4f(0.0, 0.0, 0.0, 1.0);
+    glBegin(GL_POINT);
+    glVertex3f(4.0, 4.0, 0.0);
+    glEnd();
+    
   } else
   {
   
-  };*/
+  };
 };
 
 void Alloc_GUIButton(TGUIWidget *AWidget)

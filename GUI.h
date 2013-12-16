@@ -31,6 +31,7 @@ typedef void (*TEventHandler_Default)(TGUIWidget *AWidget);
 typedef void (*TEventHandler_Draw)(TGUIWidget *AWidget);
 typedef void (*TEventHandler_MouseButton)(TGUIWidget *AWidget, int AButton, int AMouseX, int AMouseY);
 typedef void (*TEventHandler_MouseMotion)(TGUIWidget *AWidget, int AMouseX, int AMouseY);
+typedef void (*TEventHandler_Key)(TGUIWidget *AWidget, int AKey, int AScanCode, int AAction, int AMods);
 
 
 typedef void (*EventOnDraw)(TGUIWidget *AWidget);
@@ -80,8 +81,7 @@ struct TGUIWidgetStruct
   TEventHandler_MouseMotion FMouseMove;
   TEventHandler_Default FMouseEnter;
   TEventHandler_Default FMouseLeave;
-  void *FKeyDown;
-  void *FKeyUp;
+  TEventHandler_Key FKey;
   TEventHandler_Default FDraw;
   void *FFree;
   TGUIAlignment FAlignment;
