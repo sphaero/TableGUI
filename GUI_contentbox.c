@@ -53,7 +53,7 @@ void GUIContentbox_Draw(TGUIWidget *AWidget)
 
 void Alloc_GUIContentbox(TGUIWidget *AWidget)
 {
-  
+  Alloc_GUIWidget(AWidget);
   AWidget->FDraw = &GUIContentbox_Draw;
   
 };

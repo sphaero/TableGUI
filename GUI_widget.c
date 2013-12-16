@@ -18,7 +18,7 @@
 
 void GUIWidget_KeyDown(TGUIWidget *AWidget, int AKey)
 {
-  if (AWidget->FOnKeyDown)
+  //if (AWidget->FOnKeyDown)
   {
     //AWidget->FOnKeyDown(AWidget, AKey);
   };
@@ -26,7 +26,7 @@ void GUIWidget_KeyDown(TGUIWidget *AWidget, int AKey)
 
 void GUIWidget_KeyUp(TGUIWidget *AWidget, int AKey)
 {
-  if (AWidget->FOnKeyUp)
+  //if (AWidget->FOnKeyUp)
   {
     //AWidget->FOnKeyUp(AWidget, AKey);
   };
@@ -34,26 +34,30 @@ void GUIWidget_KeyUp(TGUIWidget *AWidget, int AKey)
 
 void GUIWidget_MouseDown(TGUIWidget *AWidget, int AButton, int AMouseX, int AMouseY)
 {
-  if (Widget_GetBool(AWidget, "canfocus"))
+  TGUIWidgetProperties *BWidgetProperties = (TGUIWidgetProperties *)Widget_GetPointer(AWidget, "prop");
+  
+  if (BWidgetProperties->FCanFocus)
   {
     AWidget->FWindow->FWidgetFocused = AWidget;
   };
-  if (AWidget->FOnMouseDown)
+  //if (AWidget->FOnMouseDown)
   {
     //AWidget->FOnMouseDown(AWidget, AMouseX, AMouseY);
   };
   
-  Widget_SetInt(AWidget, "down", TRUE);
+  BWidgetProperties->FDown = TRUE;
 };
 
 void GUIWidget_MouseUp(TGUIWidget *AWidget, int AButton, int AMouseX, int AMouseY)
 {
-  if (AWidget->FOnMouseUp)
+  TGUIWidgetProperties *BWidgetProperties = (TGUIWidgetProperties *)Widget_GetPointer(AWidget, "prop");
+  
+  //if (AWidget->FOnMouseUp)
   {
     //AWidget->FOnMouseUp(AWidget, AMouseX, AMouseY);
   };
   
-  if (Widget_GetBool(AWidget, "down"))
+  if (BWidgetProperties->FDown)
   {
     if (AWidget->FMouseClick)
     {
@@ -61,12 +65,12 @@ void GUIWidget_MouseUp(TGUIWidget *AWidget, int AButton, int AMouseX, int AMouse
     };
   };
   
-  Widget_SetInt(AWidget, "down", FALSE);
+  BWidgetProperties->FDown = FALSE;
 };
 
 void GUIWidget_MouseClick(TGUIWidget *AWidget, int AButton, int AMouseX, int AMouseY)
 {
-  if (AWidget->FOnMouseClick)
+  //if (AWidget->FOnMouseClick)
   {
     //AWidget->FOnMouseClick(AWidget);
   };
@@ -74,22 +78,27 @@ void GUIWidget_MouseClick(TGUIWidget *AWidget, int AButton, int AMouseX, int AMo
 
 void GUIWidget_MouseEnter(TGUIWidget *AWidget)
 {
+  TGUIWidgetProperties *BWidgetProperties = (TGUIWidgetProperties *)Widget_GetPointer(AWidget, "prop");
+  
   if ((AWidget == AWidget->FWindow->FWidgetFocused) &&
-  (AWidget->FWindow->FMouseDown))
+  (AWidget == AWidget->FWindow->FWidgetMouseDown))
   {
-    Widget_SetBool(AWidget, "down", TRUE);
+    BWidgetProperties->FDown = FALSE;
   };
 };
 
 void GUIWidget_MouseLeave(TGUIWidget *AWidget)
 {
-  Widget_SetBool(AWidget, "down", FALSE);
+  TGUIWidgetProperties *BWidgetProperties = (TGUIWidgetProperties *)Widget_GetPointer(AWidget, "prop");
+  BWidgetProperties->FDown = FALSE;
 };
 
 void Alloc_GUIWidget(TGUIWidget *AWidget)
 {
-  Widget_SetInt(AWidget, "width", 96);
-  Widget_SetInt(AWidget, "height", 16);
+  TGUIWidgetProperties *BWidgetProperties = (TGUIWidgetProperties *)Widget_GetPointer(AWidget, "prop");
+  
+  BWidgetProperties->FWidth = 96;
+  BWidgetProperties->FHeight = 24;
   
   AWidget->FDraw = NULL;
   AWidget->FMouseDown = &GUIWidget_MouseDown;

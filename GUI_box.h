@@ -11,12 +11,6 @@
 #include "GUI.h"
 #include "GUI_theme.h"
 
-struct TGUIBoxAlignmentStruct
-{
-  bboolean FExpand;
-  bboolean FFill;
-};
-
 void Alloc_GUIBox(TGUIWidget *AWidget);
 
 #endif

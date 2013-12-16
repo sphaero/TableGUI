@@ -2,83 +2,78 @@
 #include <stdio.h>
 #include <basicutils.h>
 #include "GUI.h"
+#include "GUI_box.h"
 #include "GUI_button.h"
+#include "GUI_tabset.h"
+#include "GUI_treeview.h"
 #include "GUI_checkbox.h"
 #include "GUI_scrollbar.h"
-#include "GUI_contentbox.h"
 
 int main( int argc, char* args[])
 {
+  TGUIWidgetProperties *BWidgetProperties = NULL;
+
   Initialize();
-  
   TGUIWindow *BWindow = NULL;
   TGUIWidget *BWidgetClient = NULL;
   TGUIWidget *BWidgetButton = NULL;
   TGUIWidget *BWidgetCheckBox = NULL;
   TGUIWidget *BWidgetTabset = NULL;
+  TGUIWidget *BWidgetTreeview = NULL;
   TGUIWidget *BWidgetScrollbar = NULL;
-  BWindow = GUI_Create_Window("Title", 0, 0, 320, 240, 0);
+  BWindow = GUI_Create_Window("Title", 0, 0, 320, 240, FALSE);
   
-  BWidgetClient = GUI_Create_Widget(BWindow, "contentbox", "FClientBox");  
-  Alloc_GUIContentbox(BWidgetClient);
-  Widget_SetInt(BWidgetClient, "left", 10);
-  Widget_SetInt(BWidgetClient, "top", 50);
-  Widget_SetInt(BWidgetClient, "width", 100);
-  Widget_SetInt(BWidgetClient, "height", 30);
-  Iterator_AddPointer(BWindow->FListClientWidget, BWidgetClient);
+  // BEGIN - Create the client widget.
+  BWidgetClient = GUI_Create_Widget(BWindow, "box", "FClientBox");  
+  Alloc_GUIBox(BWidgetClient);
+  BWidgetProperties = (TGUIWidgetProperties *)Widget_GetPointer(BWidgetClient, "prop");
+  BWidgetProperties->FLeft = 0;
+  BWidgetProperties->FTop = 0;
+  BWidgetProperties->FWidth = 320;
+  BWidgetProperties->FHeight = 240;
+  BWidgetProperties->FLeftAlign = TRUE;
+  BWidgetProperties->FLeftSide = LEFT;
+  BWidgetProperties->FLeftWidget = NULL;
+  BWidgetProperties->FLeftSpacing = 0;
+  BWidgetProperties->FTopAlign = TRUE;
+  BWidgetProperties->FTopSide = TOP;
+  BWidgetProperties->FTopWidget = NULL;
+  BWidgetProperties->FTopSpacing = 0;
+  BWidgetProperties->FRightAlign = TRUE;
+  BWidgetProperties->FRightSide = RIGHT;
+  BWidgetProperties->FRightWidget = NULL;
+  BWidgetProperties->FRightSpacing = 0;
+  BWidgetProperties->FBottomAlign = TRUE;
+  BWidgetProperties->FBottomSide = BOTTOM;
+  BWidgetProperties->FBottomWidget = NULL;
+  BWidgetProperties->FBottomSpacing = 0;
+  Window_AddClientWidget(BWindow, BWidgetClient);
+  // END - Create the client widget.
   
-  BWidgetClient->FAlignment.FTop.FEnabled = TRUE;
-  BWidgetClient->FAlignment.FTop.FAttatchToSide = TOP;
-  BWidgetClient->FAlignment.FLeft.FEnabled = TRUE;
-  BWidgetClient->FAlignment.FLeft.FAttatchToSide = LEFT;
-  BWidgetClient->FAlignment.FBottom.FEnabled = TRUE;
-  BWidgetClient->FAlignment.FBottom.FAttatchToSide = BOTTOM;
-  BWidgetClient->FAlignment.FRight.FEnabled = TRUE;
-  BWidgetClient->FAlignment.FRight.FAttatchToSide = RIGHT;
-  
-  BWidgetButton = GUI_Create_Widget(BWindow, "button", "FButton");
+  // BEGIN - Create the button widget.
+  BWidgetButton = GUI_Create_Widget(BWindow, "button", "FButton");  
   Alloc_GUIButton(BWidgetButton);
-  Widget_SetInt(BWidgetButton, "left", 60);
-  Widget_SetInt(BWidgetButton, "top", 8);
-  Widget_SetInt(BWidgetButton, "width", 96);
-  Widget_SetInt(BWidgetButton, "height", 24);
-  Widget_SetString(BWidgetButton, "text", "MyText");
-  AddChild(BWidgetClient, BWidgetButton);
+  BWidgetProperties = (TGUIWidgetProperties *)Widget_GetPointer(BWidgetButton, "prop");
+  BWidgetProperties->FLeft = 8;
+  BWidgetProperties->FTop = 32;
+  BWidgetProperties->FWidth = 96;
+  BWidgetProperties->FHeight = 24;
+  Widget_AddChild(BWidgetClient, BWidgetButton);
+  // END - Create the button widget.
   
-  BWidgetCheckBox = GUI_Create_Widget(BWindow, "checkbox", "FCheckbox");
-  Alloc_GUICheckbox(BWidgetCheckBox);
-  Widget_SetBool(BWidgetCheckBox, "checked", TRUE);
-  Widget_SetInt(BWidgetCheckBox, "left", 60);
-  Widget_SetInt(BWidgetCheckBox, "top", 48);
-  AddChild(BWidgetClient, BWidgetCheckBox);
-  
-  BWidgetTabset = GUI_Create_Widget(BWindow, "tabset", "FTabset");
+  // BEGIN - Create the tabset widget.
+  BWidgetTabset = GUI_Create_Widget(BWindow, "tabset", "FTabset");  
   Alloc_GUITabset(BWidgetTabset);
-  Widget_SetInt(BWidgetTabset, "left", 100);
-  Widget_SetInt(BWidgetTabset, "top", 200);
-  Widget_SetInt(BWidgetTabset, "width", 100);
-  Widget_SetInt(BWidgetTabset, "height", 24);
-  //GUITabset_AddTab(BWidgetTabset, "tab1");
-  //GUITabset_AddTab(BWidgetTabset, "tab2");
-  AddChild(BWidgetClient, BWidgetTabset);
+  BWidgetProperties = (TGUIWidgetProperties *)Widget_GetPointer(BWidgetTabset, "prop");
+  BWidgetProperties->FLeft = 0;
+  BWidgetProperties->FTop = 0;
+  BWidgetProperties->FWidth = 320;
+  BWidgetProperties->FHeight = 24;
+  Widget_AddChild(BWidgetClient, BWidgetTabset);
   
-  BWidgetScrollbar = GUI_Create_Widget(BWindow, "scrollbar", "FScrollbar");
-  Alloc_GUIScrollbar(BWidgetScrollbar);
-  Widget_SetInt(BWidgetScrollbar, "left", 8);
-  Widget_SetInt(BWidgetScrollbar, "top", 8);
-  Widget_SetInt(BWidgetScrollbar, "height", 180);
-  Widget_SetInt(BWidgetScrollbar, "max", 200);
-  Widget_SetInt(BWidgetScrollbar, "page", 100);
-  Widget_SetInt(BWidgetScrollbar, "position", 50);
-  AddChild(BWidgetClient, BWidgetScrollbar);
-  
-  // Create another client widget.
-  BWidgetClient = GUI_Create_Widget(BWindow, "box", "FModalBox");  
-  Widget_SetInt(BWidgetClient, "left", 40);
-  Widget_SetInt(BWidgetClient, "top", 24);
-  Widget_SetInt(BWidgetClient, "width", 200);
-  Widget_SetInt(BWidgetClient, "height", 150);
-  //Iterator_AddPointer(BWindow->FListClientWidget, BWidgetClient);
+  GUITabset_AddTab(BWidgetTabset, "Tab0");
+  GUITabset_AddTab(BWidgetTabset, "Label for Tab1");
+  // END - Create the tabset widget.
   
   if (BWindow)
   {

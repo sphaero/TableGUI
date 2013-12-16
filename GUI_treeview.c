@@ -14,107 +14,92 @@
 #include "GUI.h"
 #include "GUI_widget.h"
 #include "GUI_theme.h"
-#include "GUI_button.h"
+#include "GUI_treeview.h"
 
-void GUIButton_Draw(TGUIWidget *AWidget)
+void GUITreeview_DrawItem(TGUIWidget *AWidget, TIterator *AIterator, int ALevel, int *AIteratorYPosition, int AWidth, int AHeight, int AScreenXPosition, int AScreenYPosition)
 {
-  /*SDL_Renderer *BRenderer = AWidget->FWindow->FSDL_Renderer;
-  SDL_Rect BRect;
-  SDL_Surface *BText = NULL;
-  SDL_Texture* BText_Texture = NULL;
-  SDL_Color BTextColor;
-  BTextColor.r = 0;
-  BTextColor.g = 0;
-  BTextColor.b = 0;
-  BTextColor.a = 255;
-  SDL_Color BBgColor;
-  BBgColor.r = 0;
-  BBgColor.g = 0;
-  BBgColor.b = 0;
-  BBgColor.a = 0;
+  TIterator *BChild = AIterator->FFirstChild;
   
-  TTreeNode *BTreeNode = NULL;
-  
-  while (BTreeNode)
+  while (BChild)
   {
-    TTreeNode *BTreeNodeChild = NULL;
+    glColor4f(0.2, 0.2, 0.2, 1.0);
+    glBegin(GL_QUADS);
+      glVertex3f((ALevel * 16) + AWidth - 1.0 - AScreenXPosition, *AIteratorYPosition + 16.0 - 1.0 - AScreenYPosition, 0.0);
+      glVertex3f((ALevel * 16) + 1.0 - AScreenXPosition, *AIteratorYPosition + 16.0 - 1.0 - AScreenYPosition, 0.0);
+      glVertex3f((ALevel * 16) + 1.0 - AScreenXPosition, *AIteratorYPosition + 1.0 - AScreenYPosition, 0.0);
+      glVertex3f((ALevel * 16) + AWidth - 1.0 - AScreenXPosition, *AIteratorYPosition + 1.0 - AScreenYPosition, 0.0);
+    glEnd();
+    // To-do:
+    // Call here te node drawing function.
+    *AIteratorYPosition = *AIteratorYPosition + 16;
     
+    if (BChild->FFirstChild)
+    {
+      // Draw the childs of BChild.
+      GUITreeview_DrawItem(AWidget, BChild, ALevel + 1, AIteratorYPosition, AWidth, AHeight, AScreenXPosition, AScreenYPosition);
+    };
     
-    BTreeNode = BTreeNode->FNext;
+    BChild = BChild->FNext;
   };
-  
-  if (Widget_GetBool(AWidget, "enabled"))
-  {
-    // BEGIN - Draw the background and the borders.
-    SDL_SetRenderDrawColor(BRenderer, COLOR_CONTAINER_BACKGROUND_R, COLOR_CONTAINER_BACKGROUND_G, COLOR_CONTAINER_BACKGROUND_B, 255);
-    SDL_RenderClear(BRenderer);
-    
-    BRect.x = 1;
-    BRect.y = 1;
-    BRect.w = Widget_GetInt(AWidget, "width") - 2;
-    BRect.h = Widget_GetInt(AWidget, "height") - 2;
-    if (Widget_GetBool(AWidget, "down"))
-    {
-      SDL_SetRenderDrawColor(BRenderer, COLOR_BACKGROUND_SHADOW_R, COLOR_BACKGROUND_SHADOW_G, COLOR_BACKGROUND_SHADOW_B, 255);
-    } else
-    {
-      if (AWidget->FWindow->FWidgetMouseOver == AWidget)
-      {
-        SDL_SetRenderDrawColor(BRenderer, COLOR_BACKGROUND_R * 1.1, COLOR_BACKGROUND_G * 1.1, COLOR_BACKGROUND_B * 1.1, 255);
-      } else
-      {
-        SDL_SetRenderDrawColor(BRenderer, COLOR_BACKGROUND_R, COLOR_BACKGROUND_G, COLOR_BACKGROUND_B, 255);
-      };
-    };
-    
-    SDL_RenderFillRect(BRenderer, &BRect);
-    
-    SDL_SetRenderDrawColor(BRenderer, COLOR_BORDER_R, COLOR_BORDER_R, COLOR_BORDER_B, 255);
-    
-    BRect.x = 0;
-    BRect.y = 0;
-    BRect.w = Widget_GetInt(AWidget, "width");
-    BRect.h = Widget_GetInt(AWidget, "height");
-    
-    // Top
-    SDL_RenderDrawLine(BRenderer, 1, 0, BRect.w - 1 - 1, 0);
-    // Down
-    SDL_RenderDrawLine(BRenderer, 1, BRect.h - 1, BRect.w - 1 - 1, BRect.h - 1);
-    // Left
-    SDL_RenderDrawLine(BRenderer, 0, 1, 0, BRect.h - 1 - 1);
-    // Right
-    SDL_RenderDrawLine(BRenderer, BRect.w - 1, 1, BRect.w - 1, BRect.h - 1 - 1);
-    
-    
-    #ifdef USE_SDL2_TTF
-    if (AWidget->FWindow->FFont)
-    {
-      BText = TTF_RenderText_Solid(AWidget->FWindow->FFont, Widget_GetString(AWidget, "text"), BTextColor);
-      BText_Texture = SDL_CreateTextureFromSurface(BRenderer, BText);
-      SDL_FreeSurface(BText);
-      
-      SDL_QueryTexture(BText_Texture, NULL, NULL, &BRect.w, &BRect.h);
-      BRect.x = (int)((Widget_GetInt(AWidget, "width") / 2) - (BRect.w / 2));
-      BRect.y = (int)((Widget_GetInt(AWidget, "height") / 2) - (BRect.h / 2));
-      
-      SDL_RenderCopy(BRenderer, BText_Texture, NULL, &BRect);
-      SDL_DestroyTexture(BText_Texture);
-    };
-    #endif
-    SDL_RenderPresent(BRenderer);
-  } else
-  {
-  
-  };*/
 };
 
-void Alloc_GUIButton(TGUIWidget *AWidget)
+void GUITreeview_Draw(TGUIWidget *AWidget)
+{
+  int BWidth = Widget_GetInt(AWidget, "w");
+  int BHeight = Widget_GetInt(AWidget, "h");
+  int BIteratorYPosition = 0;
+  TIterator *BTree = Widget_GetPointer(AWidget, "tree");
+  // BEGIN - Draw background.
+  // END - Draw background.
+  
+  glColor4f(0.3, 0.3, 0.3, 1.0);
+  glTranslatef(0.0, 0.0, 0.0);
+  glBegin(GL_QUADS);
+    glVertex3f(BWidth, BHeight, 0.0);
+    glVertex3f(0.0, BHeight, 0.0);
+    glVertex3f(0.0, 0.0, 0.0);
+    glVertex3f(BWidth, 0.0, 0.0);
+  glEnd();
+  
+  // BEGIN - Draw items.
+  // Draw the children of BTree.
+  GUITreeview_DrawItem(AWidget, BTree, 0, &BIteratorYPosition, BWidth, BHeight, 0, 0);
+  
+  // END - Draw items.
+  // BEGIN - Draw the background and the borders.
+};
+
+void Alloc_GUITreeview(TGUIWidget *AWidget)
 {
   Alloc_GUIWidget(AWidget);
-  Widget_AddPointer(AWidget, "tree", NULL);
-  Widget_AddInt(AWidget, "positionx", 0);
-  Widget_AddInt(AWidget, "positiony", 0);
   
-  AWidget->FDraw = &GUIButton_Draw;  
+  TIterator *BTree = Alloc_Iterator(NULL);
+  Widget_AddPointer(AWidget, "tree", BTree);
+  Widget_AddInt(AWidget, "posx", 0);
+  Widget_AddInt(AWidget, "posy", 0);
+  
+  TIterator *BItemA = Alloc_Iterator(NULL);
+  Iterator_Add(BTree, BItemA);
+  TIterator *BItemB = Alloc_Iterator(NULL);
+  Iterator_Add(BTree, BItemB);
+  TIterator *BItemC = Alloc_Iterator(NULL);
+  Iterator_Add(BTree, BItemC);
+  TIterator *BItemD = Alloc_Iterator(NULL);
+  Iterator_Add(BTree, BItemD);
+  TIterator *BItemE = Alloc_Iterator(NULL);
+  Iterator_Add(BTree, BItemE);
+  
+  TIterator *BItemBA = Alloc_Iterator(NULL);
+  Iterator_Add(BItemB, BItemBA);
+  TIterator *BItemBB = Alloc_Iterator(NULL);
+  Iterator_Add(BItemB, BItemBB);
+  TIterator *BItemBC = Alloc_Iterator(NULL);
+  Iterator_Add(BItemB, BItemBC);
+  
+  TIterator *BItemCA = Alloc_Iterator(NULL);
+  Iterator_Add(BItemC, BItemCA);
+  
+  
+  AWidget->FDraw = &GUITreeview_Draw;  
 };
 

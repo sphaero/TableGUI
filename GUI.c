@@ -1,22 +1,19 @@
 /*
   This file is part of TableGUI.
   Copyright (c) 2014 Felipe Ferreira da Silva
-
   TableGUI is licensed under MIT license.
   See the file "LICENSE" for license details.
 */
 
 #include <stdio.h>
-#include <math.h>
+#include <locale.h>
+#include <time.h>
 #include <GL/gl.h>
 #include <GLFW/glfw3.h>
-
 #include <basicutils.h>
 #include "GUI.h"
+#include "GUI_font.h"
 #include "GUI_theme.h"
-
-
-//Screen dimension constants
 
 void Widget_AddBool(TGUIWidget *AWidget, char *APropertyName, const bboolean AValue)
 {
@@ -123,6 +120,11 @@ void *Widget_GetPointer(TGUIWidget *AWidget, char *APropertyName)
   return Get_Pointer(AWidget->FListProperty, APropertyName);
 };
 
+void *Widget_GetRef(TGUIWidget *AWidget, char *APropertyName)
+{
+  return Get_Reference(AWidget->FListProperty, APropertyName);
+};
+
 int Initialize()
 {
   if (glfwInit())
@@ -131,9 +133,8 @@ int Initialize()
   } else
   {
     printf("[ERROR] Fail to initialize GLFW.");
-    exit(EXIT_FAILURE);
+    exit(1);
   };
-
   return TRUE;
 };
 
@@ -155,7 +156,13 @@ int HasChild(TGUIWidget *AWidgetParent, TGUIWidget *AWidgetChild)
   return BResult;
 };
 
-int AddChild(TGUIWidget *AWidgetParent, TGUIWidget *AWidgetChild)
+int Window_AddClientWidget(TGUIWindow *AWindow, TGUIWidget *AClientWidget)
+{
+  Iterator_AddPointer(AWindow->FListClientWidget, AClientWidget);
+  AClientWidget->FParent = NULL;
+};
+
+int Widget_AddChild(TGUIWidget *AWidgetParent, TGUIWidget *AWidgetChild)
 {
   Iterator_AddPointer(AWidgetParent->FListChild, AWidgetChild);
   AWidgetChild->FParent = AWidgetParent;
@@ -172,9 +179,10 @@ TGUIWidget * FindWidget(TGUIWidget *AWidgetParent, const char *AWidgetName)
   {
     BWidget = (TGUIWidget *)BIteratorWidget->FPointer;
 
-    if (strcmp(AWidgetName, BWidget->FName->FPointer))
+    if (strcmp(AWidgetName, BWidget->FName->FPointer) == 0)
     {
       BResultWidget = BWidget;
+      printf("[MESSAGE] Widget \"%s\" found.\n", BWidget->FName->FPointer);
       break;
     };
 
@@ -182,86 +190,19 @@ TGUIWidget * FindWidget(TGUIWidget *AWidgetParent, const char *AWidgetName)
 
     BIteratorWidget = BIteratorWidget->FNext;
   };
-
+  
   return BResultWidget;
-};
-
-void Alloc_Frame(TGUIWidget *AWidget)
-{
-
-};
-
-void Alloc_ComboBox(TGUIWidget *AWidget)
-{
-
-};
-
-void Alloc_Entry(TGUIWidget *AWidget)
-{
-
-};
-
-void Alloc_ToolBar(TGUIWidget *AWidget)
-{
-
-};
-
-void Alloc_ScrollBar(TGUIWidget *AWidget)
-{
-
-};
-
-void Alloc_Button(TGUIWidget *AWidget)
-{
-
-};
-
-void Alloc_Paned(TGUIWidget *AWidget)
-{
-
-};
-
-void Alloc_Box(TGUIWidget *AWidget)
-{
-
-};
-
-void Alloc_Container(TGUIWidget *AWidget)
-{
-
-};
-
-void Alloc_Widget(TGUIWidget *AWidget)
-{
-
-};
-
-int HasClassDirectory(TGUIWindow *AWindow, const char *ADirectory)
-{
-
-};
-
-void AddClassDirectory(TGUIWindow *AWindow, const char *ADirectory)
-{
-  char *BDirectory = NULL;
-
-  if (!HasClassDirectory(AWindow, ADirectory))
-  {
-    BDirectory = (char *)malloc(strlen(ADirectory) + sizeof(char));
-    memset(BDirectory, "\0", strlen(ADirectory) + sizeof(char));
-    memcpy(BDirectory, ADirectory, strlen(ADirectory));
-
-    Iterator_AddPointer(AWindow->FClassesDirectories, ADirectory);
-  };
 };
 
 int GetWidgetGlobalLeft(TGUIWidget *AWidget)
 {
   TGUIWidget *BWidget = NULL;
   int BResult = 0;
-
-  BResult = Widget_GetInt(AWidget, "left");
-
+  
+  TGUIWidgetProperties *BWidgetProperties = (TGUIWidgetProperties *)Widget_GetPointer(AWidget, "prop");
+  
+  BResult = BWidgetProperties->FLeft;
+  
   if (AWidget->FParent)
   {
     BResult = BResult + GetWidgetGlobalLeft(AWidget->FParent);
@@ -273,8 +214,10 @@ int GetWidgetGlobalTop(TGUIWidget *AWidget)
 {
   TGUIWidget *BWidget = NULL;
   int BResult = 0;
-
-  BResult = Widget_GetInt(AWidget, "top");
+  
+  TGUIWidgetProperties *BWidgetProperties = (TGUIWidgetProperties *)Widget_GetPointer(AWidget, "prop");
+  
+  BResult = BWidgetProperties->FTop;
 
   if (AWidget->FParent)
   {
@@ -289,16 +232,15 @@ TGUIWidget * GetWidgetAt(TGUIWidget *AWidget, int AX, int AY)
   TGUIWidget *BResultWidgetChild = NULL;
   TGUIWidget *BWidget = NULL;
   TIterator *BIteratorWidget = NULL;
+  TGUIWidgetProperties *BWidgetProperties = (TGUIWidgetProperties *)Widget_GetPointer(AWidget, "prop");
 
   int BWidgetLeft = GetWidgetGlobalLeft(AWidget);
-  int BWidgetTop = GetWidgetGlobalTop(AWidget);
-  int BWidgetWidth = Widget_GetInt(AWidget, "width");
-  int BWidgetHeight = Widget_GetInt(AWidget, "height");
-
+  int BWidgetAttachTop = GetWidgetGlobalTop(AWidget);
+  
   if ((AX > BWidgetLeft) &&
-  (AX <= BWidgetLeft + BWidgetWidth) &&
-  (AY > BWidgetTop) &&
-  (AY <= BWidgetTop + BWidgetHeight))
+  (AX <= BWidgetLeft + BWidgetProperties->FWidth) &&
+  (AY > BWidgetAttachTop) &&
+  (AY <= BWidgetAttachTop + BWidgetProperties->FHeight))
   {
     BResultWidget = AWidget;
 
@@ -307,7 +249,7 @@ TGUIWidget * GetWidgetAt(TGUIWidget *AWidget, int AX, int AY)
     {
       BWidget = (TGUIWidget *)BIteratorWidget->FPointer;
 
-      if (Widget_GetBool(BWidget, "visible"))
+      if (BWidgetProperties->FVisible)
       {
         BResultWidgetChild = GetWidgetAt(BWidget, AX, AY);
       };
@@ -320,224 +262,32 @@ TGUIWidget * GetWidgetAt(TGUIWidget *AWidget, int AX, int AY)
       BIteratorWidget = BIteratorWidget->FNext;
     };
   };
-
   return BResultWidget;
 };
 
-void Widget_ResolveAlignment(TGUIWindow *AWindow, TGUIWidget *AWidget)
-{
-  int BWidgetLeft = 0;
-  int BWidgetTop = 0;
-  int BWidgetRight = 0;
-  int BWidgetBottom = 0;
-  int BWindowWidth = 0;
-  int BWindowHeight = 0;
-
-  glfwGetWindowSize(AWindow->FGLFW_Window, &BWindowWidth, &BWindowHeight);
-
-  if (AWidget->FAlignment.FLeft.FAttatchToWidget)
-  {
-    BWidgetLeft = Widget_GetInt(AWidget->FAlignment.FLeft.FAttatchToWidget, "left");
-    BWidgetTop = Widget_GetInt(AWidget->FAlignment.FLeft.FAttatchToWidget, "top");
-    BWidgetRight = BWidgetLeft + Widget_GetInt(AWidget->FAlignment.FLeft.FAttatchToWidget, "width");
-    BWidgetBottom = BWidgetTop + Widget_GetInt(AWidget->FAlignment.FLeft.FAttatchToWidget, "height");
-  } else
-  {
-    BWidgetLeft = 0;
-    BWidgetTop = 0;
-    BWidgetRight = BWindowWidth;
-    BWidgetBottom = BWindowHeight;
-  };
-
-  if ((AWidget->FAlignment.FLeft.FAttatchToSide == FALSE) &&
-  (AWidget->FAlignment.FLeft.FEnabled))
-  {
-    // If attatch the "left" to the side "left"/"FALSE" of FAttatchToWidget:
-    Widget_SetInt(AWidget, "left", BWidgetLeft + AWidget->FAlignment.FLeft.FSpacing);
-  } else
-  if ((AWidget->FAlignment.FLeft.FAttatchToSide == TRUE) &&
-  (AWidget->FAlignment.FLeft.FEnabled))
-  {
-    // If attatch the "left" to the side "right"/"TRUE" of FAttatchToWidget:
-    Widget_SetInt(AWidget, "left", BWidgetRight + AWidget->FAlignment.FLeft.FSpacing);
-  };
-
-  if ((AWidget->FAlignment.FRight.FAttatchToSide == FALSE) &&
-  (AWidget->FAlignment.FRight.FEnabled))
-  {
-    // If attatch the "right" to the side "left"/"FALSE" of FAttatchToWidget:
-    Widget_SetInt(AWidget, "width", Widget_GetInt(AWidget, "left") - BWidgetLeft - AWidget->FAlignment.FLeft.FSpacing);
-  } else
-  if ((AWidget->FAlignment.FRight.FAttatchToSide == TRUE) &&
-  (AWidget->FAlignment.FRight.FEnabled))
-  {
-    // If attatch the "right" to the side "right"/"TRUE" of FAttatchToWidget:
-    Widget_SetInt(AWidget, "width", BWidgetRight - Widget_GetInt(AWidget, "left") + AWidget->FAlignment.FLeft.FSpacing);
-  };
-
-
-
-  if ((AWidget->FAlignment.FTop.FAttatchToSide == FALSE) &&
-  (AWidget->FAlignment.FTop.FEnabled))
-  {
-    // If attatch the "top" to the side "top"/"FALSE" of FAttatchToWidget:
-    Widget_SetInt(AWidget, "top", BWidgetTop + AWidget->FAlignment.FTop.FSpacing);
-  } else
-  if ((AWidget->FAlignment.FTop.FAttatchToSide == TRUE) &&
-  (AWidget->FAlignment.FTop.FEnabled))
-  {
-    // If attatch the "top" to the side "bottom"/"TRUE" of FAttatchToWidget:
-    Widget_SetInt(AWidget, "top", BWidgetBottom + AWidget->FAlignment.FTop.FSpacing);
-  };
-
-  if ((AWidget->FAlignment.FBottom.FAttatchToSide == FALSE) &&
-  (AWidget->FAlignment.FBottom.FEnabled))
-  {
-    // If attatch the "bottom" to the side "top"/"FALSE" of FAttatchToWidget:
-    Widget_SetInt(AWidget, "height", Widget_GetInt(AWidget, "top") - BWidgetTop - AWidget->FAlignment.FTop.FSpacing);
-  } else
-  if ((AWidget->FAlignment.FBottom.FAttatchToSide == TRUE) &&
-  (AWidget->FAlignment.FBottom.FEnabled))
-  {
-    // If attatch the "bottom" to the side "bottom"/"TRUE" of FAttatchToWidget:
-    Widget_SetInt(AWidget, "height", BWidgetBottom - Widget_GetInt(AWidget, "top") + AWidget->FAlignment.FTop.FSpacing);
-  };
-
-  if (AWidget->FParent == NULL)
-  {
-    //printf("Wants the right as \"%i\".\n", Widget_GetInt(AWidget, "width"));
-  };
-};
-
-void Widget_PaintDefault(TGUIWindow *AWindow, TGUIWidget *AWidget)
-{
-  int BWidth = Widget_GetInt(AWidget, "width");
-  int BHeight = Widget_GetInt(AWidget, "height");
-
-  glColor4f(0.0, 0.0, 0.0, 1.0);
-  glBegin(GL_LINES);
-    // Top line:
-    glVertex3f(0.0, 0.0, 0.0);
-    glVertex3f(BWidth, 1.0, 0.0);
-    // Left line:
-    glVertex3f(1.0, 1.0, 0.0);
-    glVertex3f(1.0, BHeight, 0.0);
-    // Right line:
-    glVertex3f(BWidth, 1.0, 0.0);
-    glVertex3f(BWidth, BHeight, 0.0);
-    // Bottom line:
-    glVertex3f(1.0, BHeight - 1, 0.0);
-    glVertex3f(BWidth, BHeight - 1, 0.0);
-    // Diagonal line:
-    glVertex3f(0.0, 0.0, 0.0);
-    glVertex3f(BWidth, BHeight, 0.0);
-    // Diagonal line:
-    glVertex3f(BWidth, 0.0, 0.0);
-    glVertex3f(0.0, BHeight, 0.0);
-  glEnd();
-};
-
-void RenderWidget(TGUIWindow *AWindow, TGUIWidget *AWidget)
+TGUIWidget * Window_GetWidget(TGUIWindow *AWindow, char *AWidgetName)
 {
   TIterator *BIteratorWidget = NULL;
   TGUIWidget *BWidget = NULL;
-  int BWidth = 0;
-  int BHeight = 0;
-
-  Widget_ResolveAlignment(AWindow, AWidget);
-
-  BWidth = Widget_GetInt(AWidget, "width");
-  BHeight = Widget_GetInt(AWidget, "height");
-
-  if ((BWidth != AWidget->FFrameBufferWidth) ||
-  (BHeight != AWidget->FFrameBufferHeight))
-  {
-    AWidget->FFrameBufferWidth = BWidth;
-    AWidget->FFrameBufferHeight = BHeight;
-
-    //printf("[MESSAGE] Changing framebuffer of widget \"%s\".\n", AWidget->FName->FPointer);
-    GUI_ChangeFBO(&AWidget->FFrameBufferObject, &AWidget->FRenderBuffer_Color, &AWidget->FRenderBuffer_Depth,
-                  BWidth, BHeight);
-    //printf("[MESSAGE] Buffer of widget changed.\n");
-  };
-
-  // BEGIN - Prepare the widget for drawing.
-  glBindFramebuffer(GL_FRAMEBUFFER, AWidget->FFrameBufferObject);
-  glClearColor(0.4, 0.4, 0.4, 1.0);
-  glClearDepth(1.0);				// Enables Clearing Of The Depth Buffer
-  glDepthFunc(GL_LESS);				// The Type Of Depth Test To Do
-  glEnable(GL_DEPTH_TEST);			// Enables Depth Testing
-  glShadeModel(GL_SMOOTH);			// Enables Smooth Color Shading
-  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-  glEnable( GL_BLEND );
-  glViewport(0, 0, BWidth, BHeight);
-  glMatrixMode(GL_PROJECTION);
-  glPushMatrix();
-  glLoadIdentity();
-  glOrtho(0.0, BWidth, BHeight, 0.0, 1.0, -1.0);
-  glMatrixMode(GL_MODELVIEW);
-  glPushMatrix();
-  glLoadIdentity();
-  glPushAttrib(GL_DEPTH_BUFFER_BIT | GL_LIGHTING_BIT);
-  glDisable(GL_DEPTH_TEST);
-  glDisable(GL_LIGHTING);
-  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-  glPushAttrib(GL_ENABLE_BIT);
-  // END - Prepare the widget for drawing.
-
-  // BEGIN - Call the drawing function.
-  if (AWidget->FDraw)
-  {
-    Widget_PaintDefault(AWindow, AWidget);
-    AWidget->FDraw(AWidget);
-  } else
-  {
-    Widget_PaintDefault(AWindow, AWidget);
-  };
-  // END - Call the drawing function.
-
-  glPopAttrib();
-  glMatrixMode( GL_PROJECTION );
-  glPopMatrix();
-  glMatrixMode( GL_MODELVIEW );
-  glPopMatrix();
-
-  glFlush();
-
-  BIteratorWidget = AWidget->FListChild->FFirstChild;
+  BIteratorWidget = AWindow->FListWidget->FFirstChild;
+  printf("[MESSAGE] Searching for widget \"%s\".\n", AWidgetName);
+  
   while (BIteratorWidget)
   {
     BWidget = (TGUIWidget *)BIteratorWidget->FPointer;
     if (BWidget)
     {
-      int BDestRectLeft = Widget_GetInt(BWidget, "left");
-      int BDestRectTop = Widget_GetInt(BWidget, "top");
-      int BDestRectWidth = BDestRectLeft + Widget_GetInt(BWidget, "width");
-      int BDestRectHeight = BDestRectTop + Widget_GetInt(BWidget, "height");
-
-      if (Widget_GetBool(BWidget, "visible"))
+      if (strcmp(BWidget->FName->FPointer, AWidgetName) == 0)
       {
-        RenderWidget(AWindow, BWidget);
+        printf("[MESSAGE] Widget \"%s\" found.\n", BWidget->FName->FPointer);
+        break;
       };
-
-
-      // Target to copy from the render of the widget.
-      glBindFramebuffer(GL_READ_FRAMEBUFFER, BWidget->FFrameBufferObject);
-      glBindFramebuffer(GL_DRAW_FRAMEBUFFER, AWidget->FFrameBufferObject);
-      glReadBuffer(GL_COLOR_ATTACHMENT0 | GL_DEPTH_ATTACHMENT);
-      glDrawBuffer(GL_COLOR_ATTACHMENT0 | GL_DEPTH_ATTACHMENT);
-
-
-      glBlitFramebuffer(0, 0, Widget_GetInt(BWidget, "width"), Widget_GetInt(BWidget, "height"),
-                        BDestRectLeft, BDestRectTop, BDestRectWidth, BDestRectHeight,
-                        GL_COLOR_BUFFER_BIT,
-                        GL_NEAREST);
-
     };
+    
     BIteratorWidget = BIteratorWidget->FNext;
   };
 
-  glFlush();
+  return BWidget;
 };
 
 void Draw_Hatch(TGUIWindow *AWindow, int AWidth, int AHeight)
@@ -587,60 +337,357 @@ void Draw_Hatch(TGUIWindow *AWindow, int AWidth, int AHeight)
   };*/
 };
 
+void Widget_ResolveAlignment(TGUIWindow *AWindow, TGUIWidget *AWidget, TGUIWidgetProperties *AWidgetProperties)
+{
+  TGUIWidgetProperties *BWidgetToAttachAlignment = NULL;
+  int BReferenceLeft = 0;
+  int BReferenceTop = 0;
+  int BReferenceWidth = 0;
+  int BReferenceHeight = 0;
+
+  // BEGIN - Resolve the left alignment.
+  if (AWidgetProperties->FLeftAlign)
+  {
+    if (AWidgetProperties->FLeftWidget)
+    {
+      BWidgetToAttachAlignment = (TGUIWidgetProperties *)Widget_GetPointer(AWidgetProperties->FLeftWidget, "prop");
+      BReferenceLeft = BWidgetToAttachAlignment->FLeft;
+      BReferenceWidth = BWidgetToAttachAlignment->FWidth;
+    } else
+    {
+      if (AWidget->FParent)
+      {
+        BWidgetToAttachAlignment = (TGUIWidgetProperties *)Widget_GetPointer(AWidget->FParent, "prop");
+        BReferenceLeft = BWidgetToAttachAlignment->FLeft;
+        BReferenceWidth = BWidgetToAttachAlignment->FWidth;
+      } else
+      {
+        BReferenceLeft = 0;
+        BReferenceWidth = AWindow->FWidth;
+      };
+    };  
+    if (AWidgetProperties->FLeftSide == LEFT)
+    {
+      AWidgetProperties->FLeft = BReferenceLeft + AWidgetProperties->FLeftSpacing;
+    } else
+    {
+      AWidgetProperties->FLeft = (BReferenceLeft + BReferenceWidth) + AWidgetProperties->FLeftSpacing;
+    };
+  };
+  // END - Resolve the left alignment.
+  
+  // BEGIN - Resolve the right alignment.
+  if (AWidgetProperties->FRightAlign)
+  {
+    if (AWidgetProperties->FRightWidget)
+    {
+      BWidgetToAttachAlignment = (TGUIWidgetProperties *)Widget_GetPointer(AWidgetProperties->FRightWidget, "prop");
+      BReferenceLeft = BWidgetToAttachAlignment->FLeft;
+      BReferenceWidth = BWidgetToAttachAlignment->FWidth;
+    } else
+    {
+      if (AWidget->FParent)
+      {
+        BWidgetToAttachAlignment = (TGUIWidgetProperties *)Widget_GetPointer(AWidget->FParent, "prop");
+        BReferenceLeft = BWidgetToAttachAlignment->FLeft;
+        BReferenceWidth = BWidgetToAttachAlignment->FWidth;
+      } else
+      {
+        BReferenceLeft = 0;
+        BReferenceWidth = AWindow->FWidth;
+      };
+    };
+    if (AWidgetProperties->FRightSide == LEFT)
+    {
+      if (AWidgetProperties->FLeftAlign)
+      {
+        AWidgetProperties->FWidth = (BReferenceLeft) - AWidgetProperties->FLeft - AWidgetProperties->FRightSpacing;
+      } else
+      {
+        AWidgetProperties->FLeft = ((BReferenceLeft) - AWidgetProperties->FRightSpacing) - (AWidgetProperties->FWidth);
+      };
+    } else
+    {
+      if (AWidgetProperties->FLeftAlign)
+      {
+        AWidgetProperties->FWidth = (BReferenceLeft + BReferenceWidth) - AWidgetProperties->FLeft - AWidgetProperties->FRightSpacing;
+      } else
+      {
+        AWidgetProperties->FLeft = ((BReferenceLeft + BReferenceWidth) - AWidgetProperties->FRightSpacing) - (AWidgetProperties->FWidth);
+      };
+    };
+  };
+  // END - Resolve the right alignment.
+  
+  // BEGIN - Resolve the top alignment.
+  if (AWidgetProperties->FTopAlign)
+  {
+    if (AWidgetProperties->FTopWidget)
+    {
+      BWidgetToAttachAlignment = (TGUIWidgetProperties *)Widget_GetPointer(AWidgetProperties->FTopWidget, "prop");
+      BReferenceTop = BWidgetToAttachAlignment->FTop;
+      BReferenceHeight = BWidgetToAttachAlignment->FHeight;
+    } else
+    {
+      if (AWidget->FParent)
+      {
+        BWidgetToAttachAlignment = (TGUIWidgetProperties *)Widget_GetPointer(AWidget->FParent, "prop");
+        BReferenceTop = BWidgetToAttachAlignment->FTop;
+        BReferenceHeight = BWidgetToAttachAlignment->FHeight;
+      } else
+      {
+        BReferenceTop = 0;
+        BReferenceHeight = AWindow->FHeight;
+      };
+    };
+    if (AWidgetProperties->FTopSide == LEFT)
+    {
+      AWidgetProperties->FTop = BReferenceTop + AWidgetProperties->FTopSpacing;
+    } else
+    {
+      AWidgetProperties->FTop = (BReferenceTop + BReferenceHeight) + AWidgetProperties->FTopSpacing;
+    };
+  };
+  // END - Resolve the top alignment.
+  
+  // BEGIN - Resolve the bottom alignment.
+  if (AWidgetProperties->FBottomAlign)
+  {
+    if (AWidgetProperties->FBottomWidget)
+    {
+      BWidgetToAttachAlignment = (TGUIWidgetProperties *)Widget_GetPointer(AWidgetProperties->FBottomWidget, "prop");
+      BReferenceTop = BWidgetToAttachAlignment->FTop;
+      BReferenceHeight = BWidgetToAttachAlignment->FHeight;
+    } else
+    {
+      if (AWidget->FParent)
+      {
+        BWidgetToAttachAlignment = (TGUIWidgetProperties *)Widget_GetPointer(AWidget->FParent, "prop");
+        BReferenceTop = BWidgetToAttachAlignment->FTop;
+        BReferenceHeight = BWidgetToAttachAlignment->FHeight;
+      } else
+      {
+        BReferenceTop = 0;
+        BReferenceHeight = AWindow->FHeight;
+      };
+    };
+    if (AWidgetProperties->FBottomSide == LEFT)
+    {
+      if (AWidgetProperties->FTopAlign)
+      {
+        AWidgetProperties->FHeight = (BReferenceTop) - AWidgetProperties->FTop - AWidgetProperties->FBottomSpacing;
+      } else
+      {
+        AWidgetProperties->FTop = ((BReferenceTop) - AWidgetProperties->FBottomSpacing) - (AWidgetProperties->FHeight);
+      };
+    } else
+    {
+      if (AWidgetProperties->FTopAlign)
+      {
+        AWidgetProperties->FHeight = (BReferenceTop + BReferenceHeight) - AWidgetProperties->FTop - AWidgetProperties->FBottomSpacing;
+      } else
+      {
+        AWidgetProperties->FTop = ((BReferenceTop + BReferenceHeight) - AWidgetProperties->FBottomSpacing) - (AWidgetProperties->FHeight);
+      };
+    };
+  };
+  // END - Resolve the bottom alignment.
+};
+
+void Widget_PaintDefault(TGUIWindow *AWindow, TGUIWidget *AWidget)
+{
+  TGUIWidgetProperties *BWidgetProperties = Widget_GetPointer(AWidget, "prop");
+  
+  glColor4f(0.0, 0.0, 0.0, 1.0);
+  glBegin(GL_LINE_STRIP);
+    glVertex3f(BWidgetProperties->FWidth - 1.0, BWidgetProperties->FHeight - 1.0, 0.0);
+    glVertex3f(0.0, BWidgetProperties->FHeight - 1.0, 0.0);
+    glVertex3f(0.0, 0.0, 0.0);
+    glVertex3f(BWidgetProperties->FWidth - 1.0, 0.0, 0.0);
+    glVertex3f(BWidgetProperties->FWidth - 1.0, BWidgetProperties->FHeight, 0.0);
+  glEnd();
+  glBegin(GL_LINES);
+    // Diagonal line:
+    glVertex3f(0.0, 0.0, 0.0);
+    glVertex3f(BWidgetProperties->FWidth - 1.0, BWidgetProperties->FHeight - 1.0, 0.0);
+    // Diagonal line:
+    glVertex3f(BWidgetProperties->FWidth - 1.0, 0.0, 0.0);
+    glVertex3f(0.0, BWidgetProperties->FHeight - 1.0, 0.0);
+  glEnd();
+  glColor4f(0.9, 0.0, 0.0, 1.0);
+  glBegin(GL_POINTS);
+    glVertex3f(0.0, 0.0, 0.0);
+  glEnd();
+};
+
+void glEnable2D(int AWidth, int AHeight, int AOrthoLeft, int AOrthoRight, int AOrthoBottom, int AOrthoTop)
+{
+	glViewport(0, 0, AWidth, AHeight);
+  glMatrixMode(GL_PROJECTION);
+  glPushMatrix();
+  glLoadIdentity();
+  glOrtho(AOrthoLeft, AOrthoRight, AOrthoBottom, AOrthoTop, -1.0, 1.0);
+  //glMatrixMode(GL_MODELVIEW);
+  //glPushMatrix();
+  //glLoadIdentity();
+  //glPushAttrib(GL_DEPTH_BUFFER_BIT | GL_LIGHTING_BIT);
+  //glDisable(GL_DEPTH_TEST);
+  //glDisable(GL_LIGHTING);
+  glTranslatef(0.375, 0.375, 0.0);
+  
+  glEnable(GL_TEXTURE_2D);
+  
+  glDisable(GL_SMOOTH);		// Enable (gouraud) shading
+	glDisable(GL_DEPTH_TEST); 	// Disable depth testing
+  //glEnable(GL_DEPTH_TEST);							// Enables Depth Testing
+
+	//glDepthFunc(GL_LEQUAL);								// The Type Of Depth Testing To Do
+
+	//glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST);	// Really Nice Perspective Calculations
+
+  glDisable(GL_LIGHTING);
+  glEnable(GL_BLEND);		// Enable blending (used for alpha) and blending function to use
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+  //glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_COLOR);
+  glEnable(GL_ALPHA_TEST);
+  glAlphaFunc(GL_GREATER, 0);
+  
+  glMatrixMode (GL_MODELVIEW);
+  glLoadIdentity ();
+};
+
+void glDisable2D()
+{
+  /*//glPopAttrib();
+  glMatrixMode(GL_PROJECTION);
+  glPopMatrix();
+  //glMatrixMode(GL_MODELVIEW);
+  //glPopMatrix();*/
+  glMatrixMode(GL_MODELVIEW);
+  glPopMatrix();
+  glMatrixMode(GL_PROJECTION);
+  glPopMatrix();
+};
+
+void RenderWidget(TGUIWindow *AWindow, TGUIWidget *AWidget, TGUIWidgetProperties *AWidgetProperties)
+{
+  TIterator *BIteratorWidget = NULL;
+  TGUIWidget *BWidget = NULL;
+  TGUIWidgetProperties *BWidgetProperties = NULL;
+  
+  if ((AWidgetProperties->FWidth != AWidget->FFrameBufferWidth) ||
+  (AWidgetProperties->FHeight != AWidget->FFrameBufferHeight))
+  {
+    AWidget->FFrameBufferWidth = AWidgetProperties->FWidth;
+    AWidget->FFrameBufferHeight = AWidgetProperties->FHeight;
+    
+    //printf("[MESSAGE] Changing framebuffer of widget \"%s\".\n", AWidget->FName->FPointer);
+    GUI_ChangeFBO(&AWidget->FFrameBufferObject, &AWidget->FRenderBuffer_Color, &AWidget->FRenderBuffer_Depth,
+                  AWidgetProperties->FWidth, AWidgetProperties->FHeight);
+    //printf("[MESSAGE] Buffer of widget changed.\n");
+  };
+  
+  // BEGIN - Prepare the widget for drawing.
+  glBindFramebuffer(GL_FRAMEBUFFER, AWidget->FFrameBufferObject);
+  glEnable2D(AWidgetProperties->FWidth, AWidgetProperties->FHeight, 0, AWidgetProperties->FWidth, AWidgetProperties->FHeight, 0);
+  // END - Prepare the widget for drawing.
+  
+  glClearColor(0.4, 0.4, 0.4, 0.0);
+  glClear(GL_COLOR_BUFFER_BIT);
+  
+  // BEGIN - Call the drawing function.
+  if (AWidget->FDraw)
+  {
+    Widget_PaintDefault(AWindow, AWidget);
+    AWidget->FDraw(AWidget);
+  } else
+  {
+    Widget_PaintDefault(AWindow, AWidget);
+  };
+  glFlush();
+  // END - Call the drawing function.
+  glDisable2D();
+  
+  BIteratorWidget = AWidget->FListChild->FFirstChild;
+  while (BIteratorWidget)
+  {
+    BWidget = (TGUIWidget *)BIteratorWidget->FPointer;
+    if (BWidget)
+    {
+      int BDestRectLeft = 0;
+      int BDestRectTop = 0;
+      int BDestRectWidth = 0;
+      int BDestRectHeight = 0;
+      
+      BWidgetProperties = (TGUIWidgetProperties *)Widget_GetPointer(BWidget, "prop");
+      
+      BDestRectLeft = BWidgetProperties->FLeft;
+      BDestRectWidth = BDestRectLeft + BWidgetProperties->FWidth;
+      BDestRectTop = AWidgetProperties->FHeight - BWidgetProperties->FTop - BWidgetProperties->FHeight;
+      BDestRectHeight = BDestRectTop + BWidgetProperties->FHeight;
+      
+      if (BWidgetProperties->FVisible)
+      {
+        RenderWidget(AWindow, BWidget, BWidgetProperties);
+      };
+      
+      // Target to copy from the render of the widget.
+      glBindFramebuffer(GL_READ_FRAMEBUFFER, BWidget->FFrameBufferObject);
+      glBindFramebuffer(GL_DRAW_FRAMEBUFFER, AWidget->FFrameBufferObject);
+      glReadBuffer(GL_COLOR_ATTACHMENT0);
+      glDrawBuffer(GL_COLOR_ATTACHMENT0);
+      
+      glBlitFramebuffer(0, 0, BWidgetProperties->FWidth, BWidgetProperties->FHeight,
+                        BDestRectLeft, BDestRectTop, BDestRectWidth, BDestRectHeight,
+                        GL_COLOR_BUFFER_BIT,
+                        GL_NEAREST);
+    };
+    BIteratorWidget = BIteratorWidget->FNext;
+  };
+  glFlush();
+};
+
+void ResolveAlignment(TGUIWindow *AWindow, TGUIWidget *AWidget)
+{
+  TIterator *BIteratorWidget = NULL;
+  TGUIWidget *BWidget = NULL;
+  
+  // BEGIN - Resolve alignment.
+  Widget_ResolveAlignment(AWindow, AWidget, Widget_GetPointer(AWidget, "prop"));
+  // END - Resolve alignment.
+  
+  BIteratorWidget = AWidget->FListChild->FFirstChild;
+  while (BIteratorWidget)
+  {
+    BWidget = (TGUIWidget *)BIteratorWidget->FPointer;
+    if (BWidget)
+    {
+      ResolveAlignment(AWindow, BWidget);
+    };
+    BIteratorWidget = BIteratorWidget->FNext;
+  };
+};
+
 void RenderWindow(TGUIWindow *AWindow)
 {
   TIterator *BIteratorWidget = NULL;
   TGUIWidget *BClientWidget = NULL;
-  int BWindowWidth = 0;
-  int BWindowHeight = 0;
+  TGUIWidgetProperties *BWidgetProperties = NULL;
   int BTextureWidth = 0;
   int BTextureHeight = 0;
-
-  glfwGetWindowSize(AWindow->FGLFW_Window, &BWindowWidth, &BWindowHeight);
-
-  if ((BWindowWidth != AWindow->FFrameBufferWidth) ||
-  (BWindowHeight != AWindow->FFrameBufferHeight))
+  
+  if ((AWindow->FWidth != AWindow->FFrameBufferWidth) ||
+  (AWindow->FHeight != AWindow->FFrameBufferHeight))
   {
-    AWindow->FFrameBufferWidth = BWindowWidth;
-    AWindow->FFrameBufferHeight = BWindowHeight;
+    AWindow->FFrameBufferWidth = AWindow->FWidth;
+    AWindow->FFrameBufferHeight = AWindow->FHeight;
 
     //printf("[MESSAGE] Changing buffer of window.\n");
-    GUI_ChangeFBO(&AWindow->FFrameBufferObject, &AWindow->FRenderBuffer_Color, &AWindow->FRenderBuffer_Depth,
-                  BWindowWidth, BWindowHeight);
+    GUI_ChangeFBO(&AWindow->FFrameBufferObject, &AWindow->FRenderBuffer_Color, NULL,
+                  AWindow->FWidth, AWindow->FHeight);
     //printf("[MESSAGE] Buffer of window changed.\n");
   };
-
-  // BEGIN - Clear the window buffer.
-  glBindFramebuffer(GL_FRAMEBUFFER, AWindow->FFrameBufferObject);
-  glClearColor(0.0, 0.0, 0.0, 1.0);
-  glClearDepth(1.0);
-  glDepthFunc(GL_LESS);
-  glEnable(GL_DEPTH_TEST);
-  glShadeModel(GL_SMOOTH);
-  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-  glEnable( GL_BLEND );
-  glViewport(0, 0, BWindowWidth, BWindowHeight);
-  glMatrixMode(GL_PROJECTION);
-  glPushMatrix();
-  glLoadIdentity();
-  glOrtho(0.0, BWindowWidth, BWindowHeight, 0.0, 1.0, -1.0);
-  glMatrixMode(GL_MODELVIEW);
-  glPushMatrix();
-  glLoadIdentity();
-  glPushAttrib(GL_DEPTH_BUFFER_BIT | GL_LIGHTING_BIT);
-  glDisable(GL_DEPTH_TEST);
-  glDisable(GL_LIGHTING);
-  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-  glPushAttrib(GL_ENABLE_BIT);
-
-  glPopAttrib();
-  glMatrixMode(GL_PROJECTION);
-  glPopMatrix();
-  glMatrixMode(GL_MODELVIEW);
-  glPopMatrix();
-  glFlush();
-  // END - Clear the window buffer.
-
+  
   // BEGIN - Render the client widgets on the window buffer.
   BIteratorWidget = AWindow->FListClientWidget->FFirstChild;
   while (BIteratorWidget)
@@ -648,49 +695,58 @@ void RenderWindow(TGUIWindow *AWindow)
     BClientWidget = (TGUIWidget *)BIteratorWidget->FPointer;
     if (BClientWidget)
     {
-      int BDestRectLeft = Widget_GetInt(BClientWidget, "left");
-      int BDestRectTop = Widget_GetInt(BClientWidget, "top");
-      int BDestRectWidth = BDestRectLeft + Widget_GetInt(BClientWidget, "width");
-      int BDestRectHeight = BDestRectTop + Widget_GetInt(BClientWidget, "height");
-
-      if (Widget_GetBool(BClientWidget, "visible"))
+      BWidgetProperties = (TGUIWidgetProperties *)Widget_GetPointer(BClientWidget, "prop");
+      int BDestRectLeft = 0;
+      int BDestRectTop = 0;
+      int BDestRectWidth = 0;
+      int BDestRectHeight = 0;
+      
+      BDestRectLeft = BWidgetProperties->FLeft;
+      BDestRectTop = AWindow->FHeight - BWidgetProperties->FTop - BWidgetProperties->FHeight;
+      BDestRectWidth = BDestRectLeft + BWidgetProperties->FWidth;
+      BDestRectHeight = BDestRectTop + BWidgetProperties->FHeight;
+      
+      if (BWidgetProperties->FVisible)
       {
-        RenderWidget(AWindow, BClientWidget);
+        RenderWidget(AWindow, BClientWidget, BWidgetProperties);
       };
 
       // BEGIN - Copy from the client widget buffer to the window buffer.
       glBindFramebuffer(GL_READ_FRAMEBUFFER, BClientWidget->FFrameBufferObject);
-      glBindFramebuffer(GL_DRAW_FRAMEBUFFER, AWindow->FFrameBufferObject);
-      glReadBuffer(GL_COLOR_ATTACHMENT0 | GL_DEPTH_ATTACHMENT);
-      glDrawBuffer(GL_COLOR_ATTACHMENT0 | GL_DEPTH_ATTACHMENT);
-      glViewport(0, 0, BWindowWidth, BWindowHeight);
-
-      glBlitFramebuffer(0, 0, Widget_GetInt(BClientWidget, "width"), Widget_GetInt(BClientWidget, "height"),
+      glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);//AWindow->FFrameBufferObject);
+      glReadBuffer(GL_COLOR_ATTACHMENT0);
+      glDrawBuffer(GL_COLOR_ATTACHMENT0);
+      glViewport(0, 0, AWindow->FWidth, AWindow->FHeight);
+      
+      glBlitFramebuffer(0, 0, BWidgetProperties->FWidth, BWidgetProperties->FHeight,
                         BDestRectLeft, BDestRectTop, BDestRectWidth, BDestRectHeight,
                         GL_COLOR_BUFFER_BIT,
                         GL_NEAREST);
-      glFlush();
       // END - Copy from the client widget buffer to the window buffer.
     };
     BIteratorWidget = BIteratorWidget->FNext;
   };
+  glFlush();
   // END - Render the client widgets on the window buffer.
 
   // BEGIN - Copy from the window buffer to the screen buffer.
-  glBindFramebuffer(GL_READ_FRAMEBUFFER, AWindow->FFrameBufferObject);
+  /*glBindFramebuffer(GL_READ_FRAMEBUFFER, AWindow->FFrameBufferObject);
   glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
   glReadBuffer(GL_COLOR_ATTACHMENT0 | GL_DEPTH_ATTACHMENT);
   glDrawBuffer(GL_COLOR_ATTACHMENT0 | GL_DEPTH_ATTACHMENT);
-  glViewport(0, 0, BWindowWidth, BWindowHeight);
-
+  glClearColor(0.4, 0.4, 0.4, 0.0);
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+  
+  glEnable2D(BWindowWidth, BWindowHeight, 0, BWindowWidth, 0, BWindowHeight);
+  
   glBlitFramebuffer(0, 0, BWindowWidth, BWindowHeight,
-                    0, BWindowHeight, BWindowWidth, 0,
+                    0, 0, BWindowWidth, BWindowHeight,
                     GL_COLOR_BUFFER_BIT,
                     GL_NEAREST);
   glFlush();
+  glDisable2D();
+  */
   // END - Copy from the window buffer to the screen buffer.
-
-  glfwSwapBuffers(AWindow->FGLFW_Window);
 };
 
 static void Window_Callback_MouseEnter(GLFWwindow* AWindow, int AEntered)
@@ -698,11 +754,19 @@ static void Window_Callback_MouseEnter(GLFWwindow* AWindow, int AEntered)
   TGUIWindow *BWindow = (TGUIWindow *)glfwGetWindowUserPointer(AWindow);
   if (AEntered)
   {
-    printf("[MESSAGE] Mouse entered window.\n");
+    //printf("[MESSAGE] Mouse entered window.\n");
     BWindow->FWidgetMouseOver = NULL;
   } else
   {
-    printf("[MESSAGE] Mouse leaved window.\n");
+    if (BWindow->FWidgetMouseOver)
+    {
+      //printf("[MESSAGE] Mouse leave \"%s\".\n", BWindow->FWidgetMouseOver->FName->FPointer);
+      if (BWindow->FWidgetMouseOver->FMouseLeave)
+      {
+        BWindow->FWidgetMouseOver->FMouseLeave(BWindow->FWidgetMouseOver);
+      };
+    };
+    //printf("[MESSAGE] Mouse leaved window.\n");
     BWindow->FWidgetMouseOver = NULL;
   };
 };
@@ -710,33 +774,43 @@ static void Window_Callback_MouseEnter(GLFWwindow* AWindow, int AEntered)
 static void Window_Callback_MouseButton(GLFWwindow* AWindow, int AButton, int AAction, int AMods)
 {
   TGUIWindow *BWindow = (TGUIWindow *)glfwGetWindowUserPointer(AWindow);
-
+  
   if (AAction)
   {
-    BWindow->FMouseDown = TRUE;
     if (BWindow->FWidgetMouseOver)
     {
-      printf("[MESSAGE] Mouse button down inside \"%s\".\n", BWindow->FWidgetMouseOver->FName->FPointer);
-      if (Widget_GetBool(BWindow->FWidgetMouseOver, "canfocus"))
+      TGUIWidgetProperties *BWidgetProperties = (TGUIWidgetProperties *)Widget_GetPointer(BWindow->FWidgetMouseOver, "prop");
+      
+      if (BWidgetProperties->FCanFocus)
       {
         BWindow->FWidgetFocused = BWindow->FWidgetMouseOver;
       };
+      
+      BWindow->FWidgetMouseDown = BWindow->FWidgetMouseOver;
+      
       if (BWindow->FWidgetMouseOver->FMouseDown)
       {
-        BWindow->FWidgetMouseOver->FMouseDown(BWindow->FWidgetMouseOver, 0, BWindow->FMouseX - GetWidgetGlobalLeft(BWindow->FWidgetMouseOver), BWindow->FMouseY - GetWidgetGlobalTop(BWindow->FWidgetMouseOver));
+        BWindow->FWidgetMouseOver->FMouseDown(BWindow->FWidgetMouseOver,  
+                                              AButton,
+                                              BWindow->FMouseX - GetWidgetGlobalLeft(BWindow->FWidgetMouseOver),
+                                              BWindow->FMouseY - GetWidgetGlobalTop(BWindow->FWidgetMouseOver));
       };
+      printf("[MESSAGE] Mouse button down at widget \"%s\".\n", BWindow->FWidgetMouseOver->FName->FPointer);
     };
   } else
   {
-    BWindow->FMouseDown = FALSE;
     if (BWindow->FWidgetMouseOver)
     {
-      printf("[MESSAGE] Mouse button up inside \"%s\".\n", BWindow->FWidgetMouseOver->FName->FPointer);
       if (BWindow->FWidgetMouseOver->FMouseUp)
       {
-        BWindow->FWidgetMouseOver->FMouseUp(BWindow->FWidgetMouseOver, 0, BWindow->FMouseX - GetWidgetGlobalLeft(BWindow->FWidgetMouseOver), BWindow->FMouseY - GetWidgetGlobalTop(BWindow->FWidgetMouseOver));
+        BWindow->FWidgetMouseOver->FMouseUp(BWindow->FWidgetMouseOver,
+                                            AButton,
+                                            BWindow->FMouseX - GetWidgetGlobalLeft(BWindow->FWidgetMouseOver),
+                                            BWindow->FMouseY - GetWidgetGlobalTop(BWindow->FWidgetMouseOver));
+        printf("[MESSAGE] Mouse button up at widget \"%s\".\n", BWindow->FWidgetMouseOver->FName->FPointer);
       };
     };
+    BWindow->FWidgetMouseDown = NULL;
   };
 };
 
@@ -748,7 +822,7 @@ static void Window_Callback_MousePosition(GLFWwindow* AWindow, double AMouseX, d
   TIterator *BIteratorWidget = NULL;
   BWindow->FMouseX = AMouseX;
   BWindow->FMouseY = AMouseY;
-
+  
   // Mouse input works only on the last client widget. This is the modal
   // behaviour.
   BIteratorWidget = BWindow->FListClientWidget->FLastChild;
@@ -758,11 +832,13 @@ static void Window_Callback_MousePosition(GLFWwindow* AWindow, double AMouseX, d
     if (BClientWidget)
     {
       BWidgetMouseOver = GetWidgetAt(BClientWidget, BWindow->FMouseX, BWindow->FMouseY);
+      
+      // BEGIN - Widget enter and leave event.
       if (BWidgetMouseOver != BWindow->FWidgetMouseOver)
       {
         if (BWindow->FWidgetMouseOver)
         {
-          printf("[MESSAGE] Mouse leave \"%s\".\n", BWindow->FWidgetMouseOver->FName->FPointer);
+          //printf("[MESSAGE] Mouse leave \"%s\".\n", BWindow->FWidgetMouseOver->FName->FPointer);
 
           if (BWindow->FWidgetMouseOver->FMouseLeave)
           {
@@ -772,7 +848,7 @@ static void Window_Callback_MousePosition(GLFWwindow* AWindow, double AMouseX, d
 
         if (BWidgetMouseOver)
         {
-          printf("[MESSAGE] Mouse enter \"%s\".\n", BWidgetMouseOver->FName->FPointer);
+          //printf("[MESSAGE] Mouse enter \"%s\".\n", BWidgetMouseOver->FName->FPointer);
 
           if (BWidgetMouseOver->FMouseEnter)
           {
@@ -780,14 +856,31 @@ static void Window_Callback_MousePosition(GLFWwindow* AWindow, double AMouseX, d
           };
         };
       };
-
-      if (BWidgetMouseOver)
+      // END - Widget enter and leave event.
+      
+      // BEGIN - Widget move event.   
+      if (BWindow->FWidgetMouseDown) 
       {
-        if (BWidgetMouseOver->FMouseMove)
+        if (BWindow->FWidgetMouseDown->FMouseMove)
         {
-          BWidgetMouseOver->FMouseMove(BWidgetMouseOver, BWindow->FMouseX - GetWidgetGlobalLeft(BWindow->FWidgetMouseOver), BWindow->FMouseY - GetWidgetGlobalTop(BWindow->FWidgetMouseOver));
+          BWindow->FWidgetMouseDown->FMouseMove(BWindow->FWidgetMouseDown,
+                                                BWindow->FMouseX - GetWidgetGlobalLeft(BWindow->FWidgetMouseDown),
+                                                BWindow->FMouseY - GetWidgetGlobalTop(BWindow->FWidgetMouseDown));
+        };
+      } else
+      {
+        if (BWidgetMouseOver)
+        {
+          if (BWidgetMouseOver->FMouseMove)
+          {
+            BWidgetMouseOver->FMouseMove(BWidgetMouseOver,
+                                         BWindow->FMouseX - GetWidgetGlobalLeft(BWindow->FWidgetMouseOver),
+                                         BWindow->FMouseY - GetWidgetGlobalTop(BWindow->FWidgetMouseOver));
+          };
         };
       };
+      // END - Widget move event.
+      
       BWindow->FWidgetMouseOver = BWidgetMouseOver;
     };
   };
@@ -799,7 +892,6 @@ static void Window_Callback_Key(GLFWwindow* AWindow, int key, int scancode, int 
   
   if (BWindow->FWidgetFocused)
   {
-    printf("[MESSAGE] Key in the widget \"%s\".\n", BWindow->FWidgetFocused->FName->FPointer);
     if (BWindow->FWidgetFocused->FKey)
     {
       BWindow->FWidgetFocused->FKey(BWindow->FWidgetFocused, key, scancode, action, mods);
@@ -807,22 +899,54 @@ static void Window_Callback_Key(GLFWwindow* AWindow, int key, int scancode, int 
   };
 };
 
+static void Window_Callback_Size(GLFWwindow* AWindow, int AWidth, int AHeight)
+{
+  TGUIWindow *BWindow = (TGUIWindow *)glfwGetWindowUserPointer(AWindow);
+  //glfwGetWindowSize(AWindow, &BWindow->FWidth, &BWindow->FHeight);
+  BWindow->FWidth = AWidth;
+  BWindow->FHeight = AHeight;
+};
+
 void RunWindow(TGUIWindow *AWindow)
 {
   TIterator *BIteratorWidget = NULL;
   TGUIWidget *BClientWidget = NULL;
-
+  struct timeval BTime;
+  double BMilisec = 0;
+  double BPrintMilisec = 0;
+  
   AWindow->FRunning = TRUE;
+  glfwGetWindowSize(AWindow->FGLFW_Window, &AWindow->FWidth, &AWindow->FHeight);
   printf("[MESSAGE] Running window.\n");
-
+  
   // BEGIN - Window main loop.
   while (!glfwWindowShouldClose(AWindow->FGLFW_Window))
   {
     glfwPollEvents();
-
+    // BEGIN - Resolve alignment.
+    BIteratorWidget = AWindow->FListClientWidget->FFirstChild;
+    while (BIteratorWidget)
+    {
+      BClientWidget = (TGUIWidget *)BIteratorWidget->FPointer;
+      if (BClientWidget)
+      {
+        ResolveAlignment(AWindow, BClientWidget);
+      };
+      BIteratorWidget = BIteratorWidget->FNext;
+    };
+    // END - Resolve alignment.
+    
     RenderWindow(AWindow);
+    glfwSwapBuffers(AWindow->FGLFW_Window);
+    
+    gettimeofday(&BTime, NULL);
+    BPrintMilisec = (BTime.tv_sec) * 1000 + (BTime.tv_usec) / 1000;
+    //printf("[TIME] %f\n", (BPrintMilisec - BMilisec));
+    gettimeofday(&BTime, NULL);
+    BMilisec = (BTime.tv_sec) * 1000 + (BTime.tv_usec) / 1000;
   };
   // ENDf - Window main loop.
+  
   printf("[MESSAGE] Finishing window.\n");
 };
 
@@ -832,39 +956,25 @@ void GUI_AllocFBO(GLuint *AFrameBufferObject, GLuint *ARenderBuffer_Color, GLuin
   glBindRenderbuffer(GL_RENDERBUFFER, *ARenderBuffer_Color);
   glRenderbufferStorage(GL_RENDERBUFFER, GL_RGB8, AWidth, AHeight);
 
-  glGenRenderbuffers(1, ARenderBuffer_Depth);
-  glBindRenderbuffer(GL_RENDERBUFFER, *ARenderBuffer_Depth);
-  glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, AWidth, AHeight);
+  //glGenRenderbuffers(1, ARenderBuffer_Depth);
+  //glBindRenderbuffer(GL_RENDERBUFFER, *ARenderBuffer_Depth);
+  //glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, AWidth, AHeight);
 
   glGenFramebuffers(1, AFrameBufferObject);
   glBindFramebuffer(GL_FRAMEBUFFER, *AFrameBufferObject);
 
   glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, *ARenderBuffer_Color);
-  glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, *ARenderBuffer_Depth);
+  //glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, *ARenderBuffer_Depth);
 
   GLenum BCheck = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-  if (BCheck == GL_FRAMEBUFFER_COMPLETE)
-  {
-    //printf("[MESSAGE] Framebuffer Object created.\n");
-  } else
+  if (BCheck != GL_FRAMEBUFFER_COMPLETE)
   {
     printf("[ERROR] There is a problem with the Framebuffer Object.\n");
   };
 
-  if (glIsRenderbuffer(*ARenderBuffer_Color))
-  {
-    //printf("[MESSAGE] Color color render created.\n");
-  } else
+  if (!glIsRenderbuffer(*ARenderBuffer_Color))
   {
     printf("[ERROR] There is a problem with the color render.\n");
-  };
-
-  if (glIsRenderbuffer(*ARenderBuffer_Depth))
-  {
-    //printf("[MESSAGE] Depth render created.\n");
-  } else
-  {
-    printf("[ERROR] There is a problem with the depth render.\n");
   };
 };
 
@@ -872,36 +982,29 @@ void GUI_ChangeFBO(GLuint *AFrameBufferObject, GLuint *ARenderBuffer_Color, GLui
 {
   glDeleteFramebuffers(1, AFrameBufferObject);
   glDeleteRenderbuffers(1, ARenderBuffer_Color);
-  glDeleteRenderbuffers(1, ARenderBuffer_Depth);
-
+  //glDeleteRenderbuffers(1, ARenderBuffer_Depth);
+  if (AWidth <= 0)
+  {
+    AWidth = 1;
+  };
+  if (AHeight <= 0)
+  {
+    AHeight = 1;
+  };
   GUI_AllocFBO(AFrameBufferObject, ARenderBuffer_Color, ARenderBuffer_Depth, AWidth, AHeight);
 };
 
 TGUIWidget *GUI_Create_Widget(TGUIWindow *AWindow, char *AWidgetClass, const char *AWidgetName)
 {
   TGUIWidget *BWidget = (TGUIWidget *)malloc(sizeof(TGUIWidget));
+  TGUIWidgetProperties *BWidgetProperties = (TGUIWidgetProperties *)malloc(sizeof(TGUIWidgetProperties));
   BWidget->FWindow = AWindow;
   BWidget->FName = Alloc_String(AWidgetName);
   BWidget->FClass = Alloc_String(AWidgetClass);
   BWidget->FParent = NULL;
-
-  BWidget->FAlignment.FTop.FAttatchToWidget = NULL;
-  BWidget->FAlignment.FTop.FAttatchToSide = TOP;
-  BWidget->FAlignment.FTop.FSpacing = 0;
-  BWidget->FAlignment.FTop.FEnabled = FALSE;
-  BWidget->FAlignment.FLeft.FAttatchToWidget = NULL;
-  BWidget->FAlignment.FLeft.FAttatchToSide = LEFT;
-  BWidget->FAlignment.FLeft.FSpacing = 0;
-  BWidget->FAlignment.FLeft.FEnabled = FALSE;
-  BWidget->FAlignment.FBottom.FAttatchToWidget = NULL;
-  BWidget->FAlignment.FBottom.FAttatchToSide = BOTTOM;
-  BWidget->FAlignment.FBottom.FSpacing = 0;
-  BWidget->FAlignment.FBottom.FEnabled = FALSE;
-  BWidget->FAlignment.FRight.FAttatchToWidget = NULL;
-  BWidget->FAlignment.FRight.FAttatchToSide = RIGHT;
-  BWidget->FAlignment.FRight.FSpacing = 0;
-  BWidget->FAlignment.FRight.FEnabled = FALSE;
-
+  
+  Iterator_AddPointer(AWindow->FListWidget, BWidget);
+  
   BWidget->FDraw = NULL;
   BWidget->FMouseDown = NULL;
   BWidget->FMouseUp = NULL;
@@ -910,62 +1013,114 @@ TGUIWidget *GUI_Create_Widget(TGUIWindow *AWindow, char *AWidgetClass, const cha
   BWidget->FMouseLeave = NULL;
   BWidget->FKey = NULL;
   
-  BWidget->FListProperty = AllocIterator(NULL);
-  BWidget->FListChild = AllocIterator(NULL);
-
-  Widget_AddBool(BWidget, "canfocus", TRUE);
-  Widget_AddBool(BWidget, "enabled", TRUE);
-  Widget_AddBool(BWidget, "visible", TRUE);
-  Widget_AddBool(BWidget, "down", FALSE);
-  Widget_AddInt(BWidget, "left", 0);
-  Widget_AddInt(BWidget, "top", 0);
-  Widget_AddInt(BWidget, "width", 24);
-  Widget_AddInt(BWidget, "height", 24);
-  Widget_AddFloat(BWidget, "zoom", 1.0);
-
+  BWidget->FListProperty = Alloc_Iterator(NULL);
+  BWidget->FListChild = Alloc_Iterator(NULL);
+  
+  Widget_AddPointer(BWidget, "prop", BWidgetProperties);
+  BWidgetProperties->FLeft = 0;
+  BWidgetProperties->FTop = 0;
+  BWidgetProperties->FWidth = 32;
+  BWidgetProperties->FHeight = 32;
+  
+  BWidgetProperties->FLeft = FALSE;
+  BWidgetProperties->FLeftWidget = NULL;
+  BWidgetProperties->FLeftSide = LEFT;
+  BWidgetProperties->FLeftSpacing = 0;
+  
+  BWidgetProperties->FRightAlign = FALSE;
+  BWidgetProperties->FRightWidget = NULL;
+  BWidgetProperties->FRightSide = LEFT;
+  BWidgetProperties->FRightSpacing = 0;
+  
+  BWidgetProperties->FTopAlign = FALSE;
+  BWidgetProperties->FTopWidget = NULL;
+  BWidgetProperties->FTopSide = LEFT;
+  BWidgetProperties->FTopSpacing = 0;
+  
+  BWidgetProperties->FBottomAlign = FALSE;
+  BWidgetProperties->FBottomWidget = NULL;
+  BWidgetProperties->FBottomSide = LEFT;
+  BWidgetProperties->FBottomSpacing = 0;
+  
+  BWidgetProperties->FVisible = TRUE;
+  BWidgetProperties->FEnabled = TRUE;
+  BWidgetProperties->FCanFocus = TRUE;
+  
   BWidget->FFrameBufferObject = 0;
   BWidget->FRenderBuffer_Color = 0;
   BWidget->FRenderBuffer_Depth = 0;
-  GUI_AllocFBO(&BWidget->FFrameBufferObject, &BWidget->FRenderBuffer_Color, &BWidget->FRenderBuffer_Depth, Widget_GetInt(BWidget, "width"), Widget_GetInt(BWidget, "height"));
+  GUI_AllocFBO(&BWidget->FFrameBufferObject,
+               &BWidget->FRenderBuffer_Color,
+               &BWidget->FRenderBuffer_Depth,
+               BWidgetProperties->FWidth,
+               BWidgetProperties->FHeight);
 
   // BEGIN - Call class allocation function.
   // To-do:
   // Create the class manager. Find the function based on the name of the class.
   // END - Call class allocation function.
 
-  printf("[MESSAGE] Widget of class \"%s\" created.\n", BWidget->FClass->FPointer);
+  //printf("[MESSAGE] Widget of class \"%s\" created.\n", BWidget->FClass->FPointer);
   return BWidget;
 };
 
-TGUIWindow *GUI_Create_Window(const char *ATitle, int APosX, int APosY, int AWidth, int AHeight, int AFlags)
+TGUIWindow *GUI_Create_Window(const char *ATitle, int APosX, int APosY, int AWidth, int AHeight, bboolean AFullScreen)
 {
   TGUIWindow *BWindow = NULL;
   BWindow = (TGUIWindow *)malloc(sizeof(TGUIWindow));
-
+  GLFWmonitor *BMonitor;
+  
   BWindow->FRunning = FALSE;
-  BWindow->FListClientWidget = AllocIterator(NULL);
+  BWindow->FListClientWidget = Alloc_Iterator(NULL);
+  BWindow->FListWidget = Alloc_Iterator(NULL);
   BWindow->FWidgetMouseOver = NULL;
   BWindow->FMouseDown = FALSE;
-
+  BWindow->FWidgetMouseDown = NULL;
+  
   if (BWindow)
   {
-    BWindow->FGLFW_Window = glfwCreateWindow(AWidth, AHeight, ATitle, NULL, NULL);
+    if (AFullScreen)
+    {
+      BWindow->FGLFW_Window = glfwCreateWindow(AWidth, AHeight, ATitle, glfwGetPrimaryMonitor(), NULL);
+    } else
+    {
+      BWindow->FGLFW_Window = glfwCreateWindow(AWidth, AHeight, ATitle, NULL, NULL);
+    };
+    
+    BMonitor = glfwGetWindowMonitor(BWindow->FGLFW_Window);
+    if (!BMonitor)
+    {
+      BMonitor = glfwGetPrimaryMonitor();
+    };
+    
+    const GLFWvidmode *BVideoMode = glfwGetVideoMode(BMonitor);
+    glfwSetWindowPos(BWindow->FGLFW_Window, (BVideoMode->width / 2) - (AWidth / 2), 
+                                            (BVideoMode->height / 2) - (AHeight / 2));
     glfwSetWindowUserPointer(BWindow->FGLFW_Window, BWindow);
     glfwMakeContextCurrent(BWindow->FGLFW_Window);
+    
+    char* l = setlocale(LC_ALL, ""); // or "pt_BR.UTF-8"
+    if (l == NULL)
+    {
+      printf("[ERROR] Locale not set.\n");
+    } else {
+      printf("[MESSAGE] Locale set to %s.\n", l);
+    };
 
+    BWindow->FFont = Alloc_GUIFont("Serif", 12, 20);
+    
     glfwSetCursorPosCallback(BWindow->FGLFW_Window, Window_Callback_MousePosition);
     glfwSetKeyCallback(BWindow->FGLFW_Window, Window_Callback_Key);
     glfwSetMouseButtonCallback(BWindow->FGLFW_Window, Window_Callback_MouseButton);
     glfwSetCursorEnterCallback(BWindow->FGLFW_Window, Window_Callback_MouseEnter);
-
-    GUI_AllocFBO(&BWindow->FFrameBufferObject, &BWindow->FRenderBuffer_Color, &BWindow->FRenderBuffer_Depth, AWidth, AHeight);
-
-    printf("[MESSAGE] Window created.\n" );
+    glfwSetFramebufferSizeCallback(BWindow->FGLFW_Window, Window_Callback_Size);
+    
+    GUI_AllocFBO(&BWindow->FFrameBufferObject, &BWindow->FRenderBuffer_Color, NULL, AWidth, AHeight);
   } else
   {
     printf("[ERROR] Failed to create window.\n");
+    exit(1);
   };
-
+  
   return BWindow;
 };
-

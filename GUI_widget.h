@@ -6,4 +6,28 @@
   See the file "LICENSE" for license details.
 */
 
+#include <stdio.h>
+#include <math.h>
+#include <GL/gl.h>
+#include <GLFW/glfw3.h>
 
+#include <basicutils.h>
+#include "GUI.h"
+#include "GUI_theme.h"
+#include "GUI_checkbox.h"
+
+void GUIWidget_KeyDown(TGUIWidget *AWidget, int AKey);
+
+void GUIWidget_KeyUp(TGUIWidget *AWidget, int AKey);
+
+void GUIWidget_MouseDown(TGUIWidget *AWidget, int AButton, int AMouseX, int AMouseY);
+
+void GUIWidget_MouseUp(TGUIWidget *AWidget, int AButton, int AMouseX, int AMouseY);
+
+void GUIWidget_MouseClick(TGUIWidget *AWidget, int AButton, int AMouseX, int AMouseY);
+
+void GUIWidget_MouseEnter(TGUIWidget *AWidget);
+
+void GUIWidget_MouseLeave(TGUIWidget *AWidget);
+
+void Alloc_GUIWidget(TGUIWidget *AWidget);

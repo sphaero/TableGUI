@@ -6,4 +6,11 @@
   See the file "LICENSE" for license details.
 */
 
+#ifndef __GUI_TREEVIEW_H__
+#define __GUI_TREEVIEW_H__
+#include "GUI.h"
+#include "GUI_theme.h"
 
+void Alloc_GUITreeview(TGUIWidget *AWidget);
+
+#endif
