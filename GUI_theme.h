@@ -39,13 +39,4 @@
 #define COLOR_BORDER_G 32
 #define COLOR_BORDER_B 32 
 
-typedef struct TColorFloatStruct TColorFloat;
-
-struct TColorFloatStruct
-{
-  float FR;
-  float FG;
-  float FB;
-};
-
 #endif

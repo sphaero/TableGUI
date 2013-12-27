@@ -20,17 +20,13 @@
 void GUIBox_Draw(TGUIWidget *AWidget)
 {
   TGUIWidgetProperties *BWidgetProperties = (TGUIWidgetProperties *)Widget_GetPointer(AWidget, "prop");
-  glColor4f(0.4, 0.4, 0.4, 1.0);
-  glBegin(GL_QUADS);
-    glVertex3f(BWidgetProperties->FWidth, BWidgetProperties->FHeight, 0.0);
-    glVertex3f(0.0, BWidgetProperties->FHeight, 0.0);
-    glVertex3f(0.0, 0.0, 0.0);
-    glVertex3f(BWidgetProperties->FWidth, 0.0, 0.0);
-  glEnd();
-
-  glLineStipple(1, 0xAAAA);
+  
+  glClearColor(BWidgetProperties->FColor.FRed, BWidgetProperties->FColor.FGreen, BWidgetProperties->FColor.FBlue, 1.0f);
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+  
   glEnable(GL_LINE_STIPPLE);
-  glColor4f(0.3, 0.3, 0.3, 1.0);
+  glLineStipple(1, 0xAAAA);
+  glColor4f(0.1f, 0.1f, 0.1f, 1.0f);
   glBegin(GL_LINE_STRIP);
     glVertex3f(BWidgetProperties->FWidth - 1.0, BWidgetProperties->FHeight - 1.0, 0.0);
     glVertex3f(0.0, BWidgetProperties->FHeight - 1.0, 0.0);
@@ -46,5 +42,6 @@ void Alloc_GUIBox(TGUIWidget *AWidget)
   Alloc_GUIWidget(AWidget);
   
   AWidget->FDraw = &GUIBox_Draw;
+  String_Assign(AWidget->FClass, "box");
 };
 

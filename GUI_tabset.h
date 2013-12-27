@@ -12,15 +12,20 @@
 #include "GUI_theme.h"
 
 typedef struct TGUITabsetPropertiesStruct TGUITabsetProperties;
+typedef void (*TEventHandler_DrawTab)(TGUIWidget *AWidget, int ALeft, int ARight, char *AText, bboolean AActive);
 
 struct TGUITabsetPropertiesStruct
 {
-  int FPosition;
+  signed int FPosition;
   int FActiveTab;
   bboolean FUseFixedLength;
   unsigned int FLength;
   TIterator *FListTab;
   bboolean FOrientation;
+
+  bboolean FScrolling; 
+  int FMouseDownAt; 
+  int FTabsetLength; 
   // FALSE = Horizontal.
   // TRUE = Vertical;
 };

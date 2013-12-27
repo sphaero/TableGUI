@@ -11,6 +11,19 @@
 #include "GUI.h"
 #include "GUI_theme.h"
 
+typedef struct TGUIButtonPropertiesStruct TGUIButtonProperties;
+
+struct TGUIButtonPropertiesStruct
+{
+  TColorFloat FColorNormal;
+  TColorFloat FColorDown;
+  TColorFloat FColorFocused;
+  TColorFloat FColorDisabled;
+  TColorFloat FColorHighlight;
+  TString *FText;
+  GLuint FImageTexture;
+};
+
 void Alloc_GUIButton(TGUIWidget *AWidget);
 
 #endif

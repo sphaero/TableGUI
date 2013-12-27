@@ -16,9 +16,9 @@
 #include "GUI_theme.h"
 #include "GUI_checkbox.h"
 
-void GUIWidget_KeyDown(TGUIWidget *AWidget, int AKey);
+void GUIWidget_KeyDown(TGUIWidget *AWidget, int AKey, int AScancode, int AMods);
 
-void GUIWidget_KeyUp(TGUIWidget *AWidget, int AKey);
+void GUIWidget_KeyUp(TGUIWidget *AWidget, int AKey, int AScancode, int AMods);
 
 void GUIWidget_MouseDown(TGUIWidget *AWidget, int AButton, int AMouseX, int AMouseY);
 

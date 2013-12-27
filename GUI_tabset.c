@@ -17,16 +17,37 @@
 #include "GUI_button.h"
 #include "GUI_tabset.h"
 
-void GUITabset_AddTab(TGUIWidget *AWidget, const char *ALabel)
+void GUITabset_UpdateTabsetLength(TGUIWidget *AWidget)
 {
-  TGUITabsetProperties *BTabsetProperties = (TGUIWidgetProperties *)Widget_GetPointer(AWidget, "tabset");
-  Iterator_AddPointer(BTabsetProperties->FListTab, Alloc_String(ALabel));
-};
+  TGUIWidgetProperties *BWidgetProperties = (TGUIWidgetProperties *)Widget_GetPointer(AWidget, "prop");
+  TGUITabsetProperties *BTabsetProperties = (TGUITabsetProperties *)Widget_GetPointer(AWidget, "tabset");
+  TIterator *BIteratorTab = NULL;
+  
+  int BReturn = -1;
+  int BTextWidth = 0;
+  int BTextHeight = 0;
+  int BTabPos = 0;
+  
+  BIteratorTab = BTabsetProperties->FListTab->FFirstChild;
+  if (BTabsetProperties->FOrientation == FALSE)
+  {
+    while (BIteratorTab)
+    {
+      TString *BString = (TString *)BIteratorTab->FPointer;
+      if (BString)
+      {
+        BTextWidth = glTextWidth(AWidget->FWindow->FFont, String_Value(BString));
+        BTextHeight = glTextHeight(AWidget->FWindow->FFont, String_Value(BString));
 
-void GUITabset_SetActiveTab(TGUIWidget *AWidget, const int AIndex)
-{
-  TGUITabsetProperties *BTabsetProperties = (TGUIWidgetProperties *)Widget_GetPointer(AWidget, "tabset");
-  BTabsetProperties->FActiveTab = AIndex;
+        BTabPos = BTabPos + BTextWidth + 8;
+      };
+      BIteratorTab = BIteratorTab->FNext;
+    };
+  } else
+  {
+    // Vertical orientation.
+  }
+  BTabsetProperties->FTabsetLength = BTabPos;
 };
 
 int GUITabset_GetTabAt(TGUIWidget *AWidget, int AMouseX, int AMouseY)
@@ -58,7 +79,7 @@ int GUITabset_GetTabAt(TGUIWidget *AWidget, int AMouseX, int AMouseY)
         {
           BReturn = BTabIndex;
         };
-        BTabPos = BTabPos + BTextWidth + 8;
+        BTabPos = BTabPos + BTextWidth + 8 - 1;
       };
       BIteratorTab = BIteratorTab->FNext;
       BTabIndex = BTabIndex + 1;
@@ -70,38 +91,153 @@ int GUITabset_GetTabAt(TGUIWidget *AWidget, int AMouseX, int AMouseY)
   return BReturn;
 };
 
-void GUITabset_MouseDown(TGUIWidget *AWidget, int AButton, int AMouseX, int AMouseY)
+void GUITabset_AddTab(TGUIWidget *AWidget, const char *ALabel)
 {
   TGUITabsetProperties *BTabsetProperties = (TGUIWidgetProperties *)Widget_GetPointer(AWidget, "tabset");
-  GUIWidget_MouseDown(AWidget, AButton, AMouseX, AMouseY);
-  BTabsetProperties->FActiveTab = GUITabset_GetTabAt(AWidget, AMouseX, AMouseY);
+  Iterator_AddPointer(BTabsetProperties->FListTab, Alloc_String(ALabel));
+  GUITabset_UpdateTabsetLength(AWidget);
+};
+
+void GUITabset_SetActiveTab(TGUIWidget *AWidget, const int AIndex)
+{
+  TEventHandler_Default BTagChange = (TEventHandler_Default)Widget_GetSignal(AWidget, "tab");
+  TGUITabsetProperties *BTabsetProperties = (TGUIWidgetProperties *)Widget_GetPointer(AWidget, "tabset");
+  if (BTabsetProperties->FActiveTab != AIndex)
+  {
+    BTabsetProperties->FActiveTab = AIndex;
+    //printf("[MESSAGE] %s active tab is %i.\n", AWidget->FName->FPointer, AIndex);
+    if (BTagChange)
+    {
+      BTagChange(AWidget);
+    };
+  };
 };
 
 void GUITabset_DeleteTab(TGUIWidget *AWidget, int AIndex)
 {
   TGUITabsetProperties *BTabsetProperties = (TGUIWidgetProperties *)Widget_GetPointer(AWidget, "tabset");
   Iterator_Remove(BTabsetProperties->FListTab, Iterator_GetFromIndex(BTabsetProperties->FListTab, AIndex));
+  GUITabset_UpdateTabsetLength(AWidget);
+};
+
+void GUITabset_AdjustTabPosition(TGUIWidget *AWidget, TGUIWidgetProperties *AWidgetProperties, TGUITabsetProperties *ATabsetProperties)
+{
+  if (ATabsetProperties->FTabsetLength <= AWidgetProperties->FWidth)
+  {
+    if (ATabsetProperties->FPosition + ATabsetProperties->FTabsetLength > AWidgetProperties->FWidth)
+    {
+      ATabsetProperties->FPosition = AWidgetProperties->FWidth - ATabsetProperties->FTabsetLength;
+    };
+    if (ATabsetProperties->FPosition < 0)
+    {
+      ATabsetProperties->FPosition = 0;
+    };
+  } else
+  {
+    if (ATabsetProperties->FPosition < (int)(AWidgetProperties->FWidth - ATabsetProperties->FTabsetLength))
+    {
+      ATabsetProperties->FPosition = AWidgetProperties->FWidth - ATabsetProperties->FTabsetLength;
+    };
+    if (ATabsetProperties->FPosition > 0)
+    {
+      ATabsetProperties->FPosition = 0;
+    };
+  };
+};
+
+void GUITabset_Scroll(TGUIWidget *AWidget, double AXOffset, double AYOffset)
+{
+  TGUIWidgetProperties *BWidgetProperties = (TGUIWidgetProperties *)Widget_GetPointer(AWidget, "prop");
+  TGUITabsetProperties *BTabsetProperties = (TGUIWidgetProperties *)Widget_GetPointer(AWidget, "tabset");
+  
+  BTabsetProperties->FPosition = BTabsetProperties->FPosition - (-AXOffset * (BWidgetProperties->FWidth / 100));
+  GUITabset_AdjustTabPosition(AWidget, BWidgetProperties, BTabsetProperties);
+};
+
+void GUITabset_MouseMove(TGUIWidget *AWidget, int AMouseX, int AMouseY)
+{ 
+  TGUIWidgetProperties *BWidgetProperties = (TGUIWidgetProperties *)Widget_GetPointer(AWidget, "prop");
+  TGUITabsetProperties *BTabsetProperties = (TGUIWidgetProperties *)Widget_GetPointer(AWidget, "tabset");
+  
+  if (BTabsetProperties->FScrolling)
+  {
+    int BDiff = BTabsetProperties->FMouseDownAt - AMouseX;
+    BTabsetProperties->FMouseDownAt = AMouseX;
+    BTabsetProperties->FPosition = BTabsetProperties->FPosition - BDiff;
+    GUITabset_AdjustTabPosition(AWidget, BWidgetProperties, BTabsetProperties);
+
+    if (AMouseX + BWidgetProperties->FGlobalRect.FLeft > AWidget->FWindow->FWidth - 2)
+    {
+      printf("Change cursor position to 0.\n");
+      glfwSetCursorPos(AWidget->FWindow->FGLFW_Window, 1, BWidgetProperties->FGlobalRect.FTop + AMouseY);
+      printf("Now mouse at 0.\n");
+      BTabsetProperties->FMouseDownAt = -BWidgetProperties->FGlobalRect.FLeft;
+    };
+    if (AMouseX + BWidgetProperties->FGlobalRect.FLeft < 1)
+    {
+      printf("Change cursor position to window width.\n");
+      glfwSetCursorPos(AWidget->FWindow->FGLFW_Window, AWidget->FWindow->FWidth - 2, BWidgetProperties->FGlobalRect.FTop + AMouseY);
+      BTabsetProperties->FMouseDownAt = AWidget->FWindow->FWidth - 2 - BWidgetProperties->FGlobalRect.FLeft;
+      printf("Now mouse down at %i.\n", BTabsetProperties->FMouseDownAt);
+    };
+    
+  };
+};
+
+void GUITabset_MouseDown(TGUIWidget *AWidget, int AButton, int AMouseX, int AMouseY)
+{
+  TGUITabsetProperties *BTabsetProperties = (TGUIWidgetProperties *)Widget_GetPointer(AWidget, "tabset");
+  GUIWidget_MouseDown(AWidget, AButton, AMouseX, AMouseY);
+  if (AButton == GLFW_MOUSE_BUTTON_LEFT)
+  {
+    GUITabset_SetActiveTab(AWidget, GUITabset_GetTabAt(AWidget, AMouseX, AMouseY));
+  } else
+  {
+    BTabsetProperties->FScrolling = TRUE;
+    BTabsetProperties->FMouseDownAt = AMouseX;
+  };
+};
+
+void GUITabset_MouseUp(TGUIWidget *AWidget, int AButton, int AMouseX, int AMouseY)
+{
+  TGUITabsetProperties *BTabsetProperties = (TGUIWidgetProperties *)Widget_GetPointer(AWidget, "tabset");
+  GUIWidget_MouseUp(AWidget, AButton, AMouseX, AMouseY);
+  if (AButton == GLFW_MOUSE_BUTTON_LEFT)
+  {
+    GUITabset_SetActiveTab(AWidget, GUITabset_GetTabAt(AWidget, AMouseX, AMouseY));
+  };
+  BTabsetProperties->FScrolling = FALSE;
+  BTabsetProperties->FMouseDownAt = 0;
+};
+
+void GUITabset_Resize(TGUIWidget *AWidget, double AWidth, double AHeight)
+{
+  GUIWidget_Resize(AWidget, AWidth, AHeight);
+  TGUIWidgetProperties *BWidgetProperties = (TGUIWidgetProperties *)Widget_GetPointer(AWidget, "prop");
+  TGUITabsetProperties *BTabsetProperties = (TGUIWidgetProperties *)Widget_GetPointer(AWidget, "tabset");
+  GUITabset_AdjustTabPosition(AWidget, BWidgetProperties, BTabsetProperties);
 };
 
 void GUITabset_Draw(TGUIWidget *AWidget)
 {
-  TIterator *BListTab = (TIterator *)Widget_GetPointer(AWidget, "listtab");
   TGUIWidgetProperties *BWidgetProperties = (TGUIWidgetProperties *)Widget_GetPointer(AWidget, "prop");
   TGUITabsetProperties *BTabsetProperties = (TGUITabsetProperties *)Widget_GetPointer(AWidget, "tabset");
   TIterator *BIteratorTab = NULL;
+  
+  TEventHandler_DrawTab BDrawTab = (TEventHandler_DrawTab)Widget_GetSignal(AWidget, "drawtab");
+  TEventHandler_Default BDraw = (TEventHandler_Default)Widget_GetSignal(AWidget, "drawtab");
   
   int BTextWidth = 0;
   int BTextHeight = 0;
   int BTabPos = 0;
   int BTabIndex = 0;
+  glClearColor(0.35, 0.35, 0.35, 1.0);
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-  glColor4f(0.35, 0.35, 0.35, 1.0);
-  glBegin(GL_QUADS);
-    glVertex3f(BWidgetProperties->FWidth, BWidgetProperties->FHeight, 0.0);
-    glVertex3f(0.0, BWidgetProperties->FHeight, 0.0);
-    glVertex3f(0.0, 0.0, 0.0);
-    glVertex3f(BWidgetProperties->FWidth, 0.0, 0.0);
-  glEnd();
+  if (BDraw)
+  {
+    BDraw(AWidget);
+  };
   
   BIteratorTab = BTabsetProperties->FListTab->FFirstChild;
   BTabIndex = 0;
@@ -116,17 +252,21 @@ void GUITabset_Draw(TGUIWidget *AWidget)
       {
         glColor4f(0.4, 0.4, 0.4, 1.0);
         glBegin(GL_QUADS);
-          glVertex3f(BTabPos + 8 + BTabsetProperties->FPosition + BTextWidth, BWidgetProperties->FHeight, 0.0);
-          glVertex3f(BTabPos + BTabsetProperties->FPosition, BWidgetProperties->FHeight, 0.0);
-          glVertex3f(BTabPos + BTabsetProperties->FPosition, 0.0, 0.0);
-          glVertex3f(BTabPos + 8 + BTabsetProperties->FPosition + BTextWidth, 0.0, 0.0);
+          glVertex3f( BTabPos + BTabsetProperties->FPosition + BTextWidth + 8, 0.0f,                             0.0f);
+          glVertex3f( BTabPos + BTabsetProperties->FPosition,                  0.0f,                             0.0f);
+          glVertex3f( BTabPos + BTabsetProperties->FPosition,                  BWidgetProperties->FHeight,       0.0f);
+          glVertex3f( BTabPos + BTabsetProperties->FPosition + BTextWidth + 8, BWidgetProperties->FHeight,       0.0f);
         glEnd();
       };
-      glPrint(AWidget->FWindow->FFont, BTabPos + 4 + BTabsetProperties->FPosition, (BWidgetProperties->FHeight / 2) + (BTextHeight / 2), String_Value(BString));
+      glPrint(AWidget->FWindow->FFont, BTabPos + 4 + BTabsetProperties->FPosition, (BWidgetProperties->FHeight / 2) + (BTextHeight / 2), String_Value(BString), 0.0f, 0.0f, 0.0f);
+      if (BDrawTab)
+      {
+        BDrawTab(AWidget, BTabPos, BTabPos + BTextWidth + 8, String_Value(BString), BTabIndex);
+      };
       BTabPos = BTabPos + BTextWidth + 8;
     };
     BIteratorTab = BIteratorTab->FNext;
-    BTabIndex = BTabIndex + 1;
+    BTabIndex++;
   };
 };
 
@@ -144,9 +284,18 @@ void Alloc_GUITabset(TGUIWidget *AWidget)
   BTabsetProperties->FLength = 96;
   BTabsetProperties->FActiveTab = -1;
   BTabsetProperties->FOrientation = FALSE;
+  BTabsetProperties->FScrolling = FALSE;
+  BTabsetProperties->FMouseDownAt = 0;
+  BTabsetProperties->FTabsetLength = 0;
   
   Widget_AddPointer(AWidget, "tabset", BTabsetProperties);
+  Widget_AddSignal(AWidget, "drawtab");
+  Widget_AddSignal(AWidget, "tab");
   
-  AWidget->FDraw = &GUITabset_Draw;  
-  AWidget->FMouseDown = &GUITabset_MouseDown;  
+  AWidget->FDraw = &GUITabset_Draw;
+  AWidget->FMouseDown = &GUITabset_MouseDown;
+  AWidget->FMouseMove = &GUITabset_MouseMove;
+  AWidget->FMouseUp = &GUITabset_MouseUp;
+  AWidget->FScroll = &GUITabset_Scroll;
+  AWidget->FResize = &GUITabset_Resize;
 };
