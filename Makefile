@@ -5,8 +5,12 @@ LIBS      = -lm -lpthread `pkg-config --libs x11 xxf86vm xi xrandr gl libxml-2.0
 compile:
 	@echo 'Compiling GUI.'
 	@$(GCOMPILER) -g $(CFLAGS) -o GUI.o -c GUI.c
-	@echo 'Compiling GUI_font.'
+	@echo 'Compiling GUI_draw.'
+	@$(GCOMPILER) -g $(CFLAGS) -o GUI_draw.o -c GUI_draw.c
+	@echo 'Compiling GUI_widget.'
 	@$(GCOMPILER) -g $(CFLAGS) -o GUI_font.o -c GUI_font.c
+	@echo 'Compiling GUI_widget.'
+	@$(GCOMPILER) -g $(CFLAGS) -o GUI_entry.o -c GUI_entry.c
 	@echo 'Compiling GUI_widget.'
 	@$(GCOMPILER) -g $(CFLAGS) -o GUI_widget.o -c GUI_widget.c
 	@echo 'Compiling GUI_box.'
